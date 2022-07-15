@@ -3,8 +3,36 @@
 
 #include <Assets/_Shaders/Constants.cginc>
 
+StructuredBuffer<uint> data; // size = BUCKET_SIZE * BLOCK_SIZE
+RWStructuredBuffer<uint> blockSumsData; // size = BUCKET_SIZE * BLOCK_SIZE
+
+groupshared uint scanTile[THREADS_PER_BLOCK / WARP_SIZE];
+
 [numthreads(THREADS_PER_BLOCK,1,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+void CSMain(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {
-    
+    const uint threadId = tid.x;
+    const uint groupId = gid.x;
+    const uint warpId = threadId / WARP_SIZE;
+    const uint laneId = threadId % WARP_SIZE;
+
+    const uint element = data[groupId * THREADS_PER_BLOCK + threadId];
+    GroupMemoryBarrierWithGroupSync();
+    const uint wavePrefix = WavePrefixSum(element);
+
+    if (laneId == WARP_SIZE - 1)
+    {
+        scanTile[warpId] = wavePrefix + element;
+    }
+    GroupMemoryBarrierWithGroupSync();
+
+    if (threadId < WARP_SIZE)
+    {
+        const uint warpSum = scanTile[threadId];
+        const uint blockPrefix = WavePrefixSum(warpSum);
+        if (threadId == WARP_SIZE - 1)
+        {
+            blockSumsData[groupId] = blockPrefix + warpSum;
+        }
+    }
 }

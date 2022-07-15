@@ -3,14 +3,14 @@
 
 #include <Assets/_Shaders/Constants.cginc>
 
-RWStructuredBuffer<uint> data; // size = THREADS_PER_BLOCK
+RWStructuredBuffer<uint> data; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 
 RWStructuredBuffer<uint> offsetsData; // size = BLOCK_SIZE * BUCKET_SIZE
 RWStructuredBuffer<uint> sizesData; // size = BLOCK_SIZE * BUCKET_SIZE
 
 
 groupshared uint sortTile[THREADS_PER_BLOCK];
-groupshared uint scanTile[WARP_SIZE];
+groupshared uint scanTile[THREADS_PER_BLOCK / WARP_SIZE];
 groupshared uint falseTotal;
 
 groupshared uint radixTile[THREADS_PER_BLOCK];
@@ -35,7 +35,7 @@ inline uint intraBlockScan(uint threadId, bool pred0)
     if (threadId < WARP_SIZE)
     {
         const uint prefixSum = scanTile[threadId];
-        scanTile[threadId] = WavePrefixSum(prefixSum);
+        scanTile[threadId] =  WavePrefixSum(prefixSum);
     }
     GroupMemoryBarrierWithGroupSync();
 

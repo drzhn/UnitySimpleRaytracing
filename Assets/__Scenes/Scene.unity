@@ -330,7 +330,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 38341b17049daa841bd62433f5df2d02, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _radixSortShader: {fileID: 7200000, guid: ed509731e311c304fb647ecc28dd7d61, type: 3}
+  _localRadixSortShader: {fileID: 7200000, guid: ed509731e311c304fb647ecc28dd7d61, type: 3}
+  _globalRadixSortShader: {fileID: 0}
+  _scanShader: {fileID: 7200000, guid: fff207dbb65fa8c4a95ddc91c780ddf8, type: 3}
 --- !u!4 &1381439634
 Transform:
   m_ObjectHideFlags: 0
