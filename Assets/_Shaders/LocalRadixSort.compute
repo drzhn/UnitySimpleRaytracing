@@ -67,7 +67,7 @@ void CSMain(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     
         const uint trueBefore = intraBlockScan(threadId, pred0);
     
-        GroupMemoryBarrierWithGroupSync();
+        // GroupMemoryBarrierWithGroupSync();
     
         if (threadId == THREADS_PER_BLOCK - 1)
         {

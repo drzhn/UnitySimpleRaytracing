@@ -3,14 +3,28 @@
 
 #include <Assets/_Shaders/Constants.cginc>
 
+// maximum number of elements we will process = 512*1024 elements
+// local radix sort will generate 128*1024 elements to scan
+// each block in scan algorithm process 1024 elements, so maximum output size of computing blockSumsData = 128 elems
+// since Blelloch scan has binary tree nature, max number of steps will be log2(sizeof(blockSumsData)) = 7
+#define NUM_STEPS 7
+
 StructuredBuffer<uint> data; // size = BUCKET_SIZE * BLOCK_SIZE
-RWStructuredBuffer<uint> blockSumsData; // size = BUCKET_SIZE * BLOCK_SIZE
+RWStructuredBuffer<uint> blockSumsData; // size = BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE)
 
 groupshared uint scanTile[THREADS_PER_BLOCK / WARP_SIZE];
+groupshared uint blockSums[(1 << NUM_STEPS) + (1 << (NUM_STEPS-1))];
+
 
 [numthreads(THREADS_PER_BLOCK,1,1)]
 void CSMain(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {
+    // our data has THREADS_PER_BLOCK * BLOCK_SIZE elements.
+    // each block in LocalRadixSort step produces 2 ^ RADIX = BUCKET_SIZE elements
+    // so, whole number of sizesData array will be BLOCK_SIZE * BUCKET_SIZE elements 
+    // here each block process THREADS_PER_BLOCK elements
+    // so, number of blocks will be BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE)
+    const uint blockSize = BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE); 
     const uint threadId = tid.x;
     const uint groupId = gid.x;
     const uint warpId = threadId / WARP_SIZE;
@@ -33,6 +47,8 @@ void CSMain(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
         if (threadId == WARP_SIZE - 1)
         {
             blockSumsData[groupId] = blockPrefix + warpSum;
+            blockSums[groupId] = blockPrefix + warpSum;
         }
     }
+    GroupMemoryBarrierWithGroupSync();
 }
