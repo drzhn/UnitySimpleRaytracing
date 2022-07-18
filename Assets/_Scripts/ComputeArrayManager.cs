@@ -90,6 +90,8 @@ public class ComputeArrayManager : MonoBehaviour
 
     void ValidateData()
     {
+        // does output sorted data contains all of the elements from input unsorted data? 
+        // TODO does output sorted data actually sorted? 
         Dictionary<uint, int> dataDictionary = new Dictionary<uint, int>(256);
         for (uint i = 0; i < DATA_ARRAY_COUNT; i++)
         {
@@ -98,6 +100,11 @@ public class ComputeArrayManager : MonoBehaviour
                 dataDictionary.Add(_sortedData[i], 0);
             }
             dataDictionary[_sortedData[i]]++;
+            // if (i==0) continue;
+            // if (_sortedData[i] < _sortedData[i - 1])
+            // {
+            //     Debug.LogError("Output data has unsorted element on index " + i);
+            // }
         }
 
         for (uint i = 0; i < DATA_ARRAY_COUNT; i++)
@@ -105,8 +112,17 @@ public class ComputeArrayManager : MonoBehaviour
             dataDictionary[_unsortedData[i]]--;
         }
 
-        Debug.Log("Output array contains all of the elements of input array: " + dataDictionary.All(x => x.Value == 0));
-
+        if (dataDictionary.All(x => x.Value == 0))
+        {
+            Debug.Log("Output array contains all of the elements from input array");
+        }
+        else
+        {
+            Debug.LogError("Output array does not contain all of the elements from input array");
+        }
+        
+        // Does block prefix sum calculated correctly? 
+        
         bool hasSizesPrefixSumError = false;
         for (uint i = 0; i < BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE); i++)
         {
