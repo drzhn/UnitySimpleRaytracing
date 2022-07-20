@@ -177,7 +177,7 @@ public class ComputeArrayManager : MonoBehaviour
 
         if (!hasSizesPrefixSumError)
         {
-            Debug.Log("Sum of sizes block is correct");
+            Debug.Log("Scan operation is correct");
         }
     }
 

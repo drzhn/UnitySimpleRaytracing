@@ -86,8 +86,7 @@ void BlockSum(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     }
 
     GroupMemoryBarrierWithGroupSync();
-    blockSumsData[threadId] = /*element + */wavePrefix + scanTile[warpId];
-    // blockSumsData[threadId] = element + wavePrefix + scanTile[warpId];
+    blockSumsData[threadId] = wavePrefix + scanTile[warpId];
 }
 
 [numthreads(THREADS_PER_BLOCK,1,1)]
