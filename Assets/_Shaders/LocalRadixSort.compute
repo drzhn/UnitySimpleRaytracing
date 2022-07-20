@@ -1,5 +1,5 @@
 #pragma use_dxc
-#pragma kernel CSMain
+#pragma kernel LocalRadixSort
 
 #include <Assets/_Shaders/Constants.cginc>
 
@@ -18,7 +18,7 @@ groupshared uint offsetsTile[BUCKET_SIZE];
 groupshared uint sizesTile[BUCKET_SIZE];
 
 
-inline uint intraBlockScan(uint threadId, bool pred0)
+inline uint IntraBlockScan(uint threadId, bool pred0)
 {
     const uint warpIdx = threadId / WARP_SIZE;
     const uint laneIdx = threadId % WARP_SIZE;
@@ -43,7 +43,7 @@ inline uint intraBlockScan(uint threadId, bool pred0)
 }
 
 [numthreads(THREADS_PER_BLOCK,1,1)]
-void CSMain(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
+void LocalRadixSort(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {
     const uint bitOffset = 0;
 
@@ -65,7 +65,7 @@ void CSMain(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     
         GroupMemoryBarrierWithGroupSync();
     
-        const uint trueBefore = intraBlockScan(threadId, pred0);
+        const uint trueBefore = IntraBlockScan(threadId, pred0);
     
         // GroupMemoryBarrierWithGroupSync();
     

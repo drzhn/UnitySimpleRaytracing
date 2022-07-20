@@ -15,6 +15,7 @@ public class ComputeArrayManager : MonoBehaviour
     private int _preScanKernel;
     private int _blockSumKernel;
     private int _globalScanKernel;
+    private int _globalRadixKernel;
 
     private ComputeBuffer _data;
     private ComputeBuffer _offsetsData;
@@ -53,7 +54,7 @@ public class ComputeArrayManager : MonoBehaviour
 
         // Set data
 
-        _localRadixKernel = _localRadixSortShader.FindKernel("CSMain");
+        _localRadixKernel = _localRadixSortShader.FindKernel("LocalRadixSort");
         _localRadixSortShader.SetBuffer(_localRadixKernel, "data", _data);
         _localRadixSortShader.SetBuffer(_localRadixKernel, "offsetsData", _offsetsData);
         _localRadixSortShader.SetBuffer(_localRadixKernel, "sizesData", _sizesData);
@@ -64,9 +65,7 @@ public class ComputeArrayManager : MonoBehaviour
         _globalScanKernel = _scanShader.FindKernel("GlobalScan");
         _scanShader.SetBuffer(_preScanKernel, "data", _sizesData);
         _scanShader.SetBuffer(_preScanKernel, "blockSumsData", _sizesPrefixSumData);        
-
         _scanShader.SetBuffer(_blockSumKernel, "blockSumsData", _sizesPrefixSumData);     
-        
         _scanShader.SetBuffer(_globalScanKernel, "data", _sizesData);
         _scanShader.SetBuffer(_globalScanKernel, "blockSumsData", _sizesPrefixSumData);
     }

@@ -1,0 +1,7 @@
+#pragma kernel GlobalRadixSort
+
+[numthreads(8,8,1)]
+void GlobalRadixSort (uint3 id : SV_DispatchThreadID)
+{
+
+}
