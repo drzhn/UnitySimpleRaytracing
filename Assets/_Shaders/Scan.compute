@@ -50,7 +50,7 @@ void PreScan(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     }
 
     GroupMemoryBarrierWithGroupSync();
-    data[groupId * THREADS_PER_BLOCK + threadId] = element + wavePrefix + scanTile[warpId];
+    data[groupId * THREADS_PER_BLOCK + threadId] = wavePrefix + scanTile[warpId];
 }
 
 [numthreads(BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE),1,1)]

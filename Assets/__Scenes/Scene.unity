@@ -331,7 +331,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _localRadixSortShader: {fileID: 7200000, guid: ed509731e311c304fb647ecc28dd7d61, type: 3}
-  _globalRadixSortShader: {fileID: 0}
+  _globalRadixSortShader: {fileID: 7200000, guid: 1c47efd69e3337942ae5790d70241555, type: 3}
   _scanShader: {fileID: 7200000, guid: fff207dbb65fa8c4a95ddc91c780ddf8, type: 3}
 --- !u!4 &1381439634
 Transform:

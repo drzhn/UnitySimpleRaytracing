@@ -35,7 +35,7 @@ inline uint IntraBlockScan(uint threadId, bool pred0)
     if (threadId < WARP_SIZE)
     {
         const uint prefixSum = scanTile[threadId];
-        scanTile[threadId] =  WavePrefixSum(prefixSum);
+        scanTile[threadId] = WavePrefixSum(prefixSum);
     }
     GroupMemoryBarrierWithGroupSync();
 
@@ -52,51 +52,55 @@ void LocalRadixSort(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 
     sortTile[threadId] = data[groupId * THREADS_PER_BLOCK + threadId];
 
-    GroupMemoryBarrierWithGroupSync();
-    
+    AllMemoryBarrierWithGroupSync();
+
     for (uint shift = 0; shift < RADIX; shift++)
     {
         uint predResult = 0;
-    
+
         uint el0 = sortTile[threadId];
         bool pred0 = (el0 >> shift) & 1;
-    
+
         predResult += pred0;
-    
+
         GroupMemoryBarrierWithGroupSync();
-    
+
         const uint trueBefore = IntraBlockScan(threadId, pred0);
-    
+
         // GroupMemoryBarrierWithGroupSync();
-    
+
         if (threadId == THREADS_PER_BLOCK - 1)
         {
             falseTotal = THREADS_PER_BLOCK - (trueBefore + predResult);
         }
         GroupMemoryBarrierWithGroupSync();
-    
+
         sortTile[pred0 ? trueBefore + falseTotal : threadId - trueBefore] = el0;
-    
+
         GroupMemoryBarrierWithGroupSync();
     }
-    
-    data[groupId * THREADS_PER_BLOCK + threadId] = sortTile[threadId];
-    
-    radixTile[threadId] = (sortTile[threadId] >> bitOffset) & (BUCKET_SIZE - 1);
-    
+
+    GroupMemoryBarrierWithGroupSync();
+
+    const uint element = sortTile[threadId];
+    GroupMemoryBarrierWithGroupSync();
+
+    data[groupId * THREADS_PER_BLOCK + threadId] = element;
+    radixTile[threadId] = (element >> bitOffset) & (BUCKET_SIZE - 1);
+
     if (threadId < BUCKET_SIZE)
     {
         offsetsTile[threadId] = 0;
         sizesTile[threadId] = 0;
     }
     GroupMemoryBarrierWithGroupSync();
-    
+
     if (threadId > 0 && radixTile[threadId - 1] != radixTile[threadId])
     {
         offsetsTile[radixTile[threadId]] = threadId;
     }
     GroupMemoryBarrierWithGroupSync();
-    
+
     if (threadId > 0 && radixTile[threadId - 1] != radixTile[threadId])
     {
         uint radix = radixTile[threadId - 1];
@@ -104,13 +108,14 @@ void LocalRadixSort(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     }
     if (threadId == THREADS_PER_BLOCK - 1)
     {
-        sizesTile[BUCKET_SIZE - 1] = THREADS_PER_BLOCK - offsetsTile[BUCKET_SIZE - 1];
+        uint radix = radixTile[THREADS_PER_BLOCK - 1];
+        sizesTile[radix] = THREADS_PER_BLOCK - offsetsTile[radix];
     }
-    
+
     GroupMemoryBarrierWithGroupSync();
     if (threadId < BUCKET_SIZE)
     {
-        offsetsData[groupId + threadId * BLOCK_SIZE] = offsetsTile[threadId]; //  groupId * BLOCK_SIZE + threadId ???   
-        sizesData[groupId + threadId * BLOCK_SIZE] = sizesTile[threadId]; 
+        offsetsData[groupId * BUCKET_SIZE + threadId] = offsetsTile[threadId];
+        sizesData[groupId + threadId * BLOCK_SIZE] = sizesTile[threadId];
     }
 }
