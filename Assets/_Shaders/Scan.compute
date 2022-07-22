@@ -5,12 +5,6 @@
 
 #include <Assets/_Shaders/Constants.cginc>
 
-// maximum number of elements we will process = 512*1024 elements
-// local radix sort will generate 128*1024 elements to scan
-// each block in scan algorithm process 1024 elements, so maximum output size of computing blockSumsData = 128 elems
-// since Blelloch scan has binary tree nature, max number of steps will be log2(sizeof(blockSumsData)) = 7
-#define NUM_STEPS 7
-
 RWStructuredBuffer<uint> data; // size = BUCKET_SIZE * BLOCK_SIZE
 RWStructuredBuffer<uint> blockSumsData; // size = BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE)
 
@@ -43,7 +37,7 @@ void PreScan(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
         const uint warpPrefix = WavePrefixSum(warpSum);
         scanTile[threadId] = warpPrefix;
 
-        if (threadId == WARP_SIZE - 1)
+        if (threadId == THREADS_PER_BLOCK / WARP_SIZE - 1)
         {
             blockSumsData[groupId] = warpPrefix + warpSum;
         }
