@@ -3,11 +3,14 @@
 
 #include <Assets/_Shaders/Constants.cginc>
 
-RWStructuredBuffer<uint> data; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<uint> unsortedData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 
+
+RWStructuredBuffer<uint> sortedBlocksData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 RWStructuredBuffer<uint> offsetsData; // size = BLOCK_SIZE * BUCKET_SIZE
 RWStructuredBuffer<uint> sizesData; // size = BLOCK_SIZE * BUCKET_SIZE
 
+uniform int bitOffset;
 
 groupshared uint sortTile[THREADS_PER_BLOCK];
 groupshared uint scanTile[THREADS_PER_BLOCK / WARP_SIZE];
@@ -45,16 +48,14 @@ inline uint IntraBlockScan(uint threadId, bool pred0)
 [numthreads(THREADS_PER_BLOCK,1,1)]
 void LocalRadixSort(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {
-    const uint bitOffset = 0;
-
     const uint threadId = tid.x;
     const uint groupId = gid.x;
 
-    sortTile[threadId] = data[groupId * THREADS_PER_BLOCK + threadId];
+    sortTile[threadId] = unsortedData[groupId * THREADS_PER_BLOCK + threadId];
 
     AllMemoryBarrierWithGroupSync();
 
-    for (uint shift = 0; shift < RADIX; shift++)
+    for (uint shift = bitOffset; shift < bitOffset + RADIX; shift++)
     {
         uint predResult = 0;
 
@@ -85,7 +86,7 @@ void LocalRadixSort(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     const uint element = sortTile[threadId];
     GroupMemoryBarrierWithGroupSync();
 
-    data[groupId * THREADS_PER_BLOCK + threadId] = element;
+    sortedBlocksData[groupId * THREADS_PER_BLOCK + threadId] = element;
     radixTile[threadId] = (element >> bitOffset) & (BUCKET_SIZE - 1);
 
     if (threadId < BUCKET_SIZE)

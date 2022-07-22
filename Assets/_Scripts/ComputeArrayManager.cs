@@ -17,8 +17,8 @@ public class ComputeArrayManager : MonoBehaviour
     private int _globalScanKernel;
     private int _globalRadixKernel;
 
-    private ComputeBuffer _unsortedData;
-    private ComputeBuffer _sortedData;
+    private ComputeBuffer _data;
+    private ComputeBuffer _sortedBlocksData;
     private ComputeBuffer _offsetsData;
     private ComputeBuffer _sizesData;
     private ComputeBuffer _sizesPrefixSumData;
@@ -32,16 +32,19 @@ public class ComputeArrayManager : MonoBehaviour
     private const int BUCKET_SIZE = 1 << 8;
 
     private readonly uint[] _unsortedLocalData = new uint[DATA_ARRAY_COUNT];
+    private readonly uint[] _sortedBlockLocalData = new uint[DATA_ARRAY_COUNT];
     private readonly uint[] _sortedLocalData = new uint[DATA_ARRAY_COUNT];
     private readonly uint[] _offsetsLocalData = new uint[BUCKET_SIZE * BLOCK_SIZE];
     private readonly uint[] _sizesLocalDataBeforeScan = new uint[BUCKET_SIZE * BLOCK_SIZE];
     private readonly uint[] _sizesLocalDataAfterScan = new uint[BUCKET_SIZE * BLOCK_SIZE];
     private readonly uint[] _sizesPrefixSumLocalData = new uint[BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE)];
 
+    private readonly Dictionary<uint, int> _debugDataDictionary = new(256);
+
     private void Awake()
     {
-        _unsortedData = new ComputeBuffer(DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
-        _sortedData = new ComputeBuffer(DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
+        _data = new ComputeBuffer(DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
+        _sortedBlocksData = new ComputeBuffer(DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
         _offsetsData = new ComputeBuffer(BUCKET_SIZE * BLOCK_SIZE, sizeof(uint), ComputeBufferType.Structured);
         _sizesData = new ComputeBuffer(BUCKET_SIZE * BLOCK_SIZE, sizeof(uint), ComputeBufferType.Structured);
         _sizesPrefixSumData = new ComputeBuffer(BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE), sizeof(uint), ComputeBufferType.Structured);
@@ -49,15 +52,16 @@ public class ComputeArrayManager : MonoBehaviour
         // Generate random data
         for (uint i = 0; i < DATA_ARRAY_COUNT; i++)
         {
-            _unsortedLocalData[i] = (uint)Random.Range(0, 256);
+            _unsortedLocalData[i] = (uint)Random.Range(0, uint.MaxValue);
         }
 
-        _unsortedData.SetData(_unsortedLocalData);
+        _data.SetData(_unsortedLocalData);
 
         // Set data
 
         _localRadixKernel = _localRadixSortShader.FindKernel("LocalRadixSort");
-        _localRadixSortShader.SetBuffer(_localRadixKernel, "data", _unsortedData);
+        _localRadixSortShader.SetBuffer(_localRadixKernel, "unsortedData", _data);
+        _localRadixSortShader.SetBuffer(_localRadixKernel, "sortedBlocksData", _sortedBlocksData);
         _localRadixSortShader.SetBuffer(_localRadixKernel, "offsetsData", _offsetsData);
         _localRadixSortShader.SetBuffer(_localRadixKernel, "sizesData", _sizesData);
 
@@ -72,70 +76,57 @@ public class ComputeArrayManager : MonoBehaviour
         _scanShader.SetBuffer(_globalScanKernel, "blockSumsData", _sizesPrefixSumData);
 
         _globalRadixKernel = _globalRadixSortShader.FindKernel("GlobalRadixSort");
-        _globalRadixSortShader.SetBuffer(_globalRadixKernel, "data", _unsortedData);
+        _globalRadixSortShader.SetBuffer(_globalRadixKernel, "sortedBlocksData", _sortedBlocksData);
         _globalRadixSortShader.SetBuffer(_globalRadixKernel, "offsetsData", _offsetsData);
         _globalRadixSortShader.SetBuffer(_globalRadixKernel, "sizesData", _sizesData);
-        _globalRadixSortShader.SetBuffer(_globalRadixKernel, "sortedData", _sortedData);
+        _globalRadixSortShader.SetBuffer(_globalRadixKernel, "sortedData", _data);
+
+        // debug data
+        for (uint i = 0; i < 256; i++)
+        {
+            _debugDataDictionary.Add(i, 0);
+        }
     }
 
     void Start()
     {
-        _localRadixSortShader.Dispatch(_localRadixKernel, BLOCK_SIZE, 1, 1);
-
-        _sizesData.GetData(_sizesLocalDataBeforeScan);
-        Debug.Log("Sizes before scan: " + ArrayToString(_sizesLocalDataBeforeScan));
-
-        _scanShader.Dispatch(_preScanKernel, BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE), 1, 1);
-        _scanShader.Dispatch(_blockSumKernel, 1, 1, 1);
-        _scanShader.Dispatch(_globalScanKernel, BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE), 1, 1);
-
-        // _offsetsData.GetData(_offsetsLocalData);
-        // _sizesData.GetData(_sizesLocalDataAfterScan);
-        // _unsortedData.GetData(_sortedLocalData);
-        // Debug.Log("Data after local sort: " + ArrayToString(_sortedLocalData));
-
-        // TryDataCPU();
-
-        _globalRadixSortShader.Dispatch(_globalRadixKernel, BLOCK_SIZE, 1, 1);
-
-        GetDataBack();
-        PrintData();
-        ValidateData();
-    }
-
-    void TryDataCPU()
-    {
-        uint[] resultData = new uint[DATA_ARRAY_COUNT];
-        uint[] offsetData = new uint[BUCKET_SIZE];
-        uint[] sizesData = new uint[BUCKET_SIZE];
-        for (uint groupId = 0; groupId < BLOCK_SIZE; groupId++)
+        for (int bitOffset = 0; bitOffset < 32; bitOffset += RADIX)
         {
-            for (uint j = 0; j < BUCKET_SIZE; j++)
-            {
-                offsetData[j] = _offsetsLocalData[groupId * BUCKET_SIZE + j];
-                sizesData[j] = _sizesLocalDataAfterScan[groupId + j * BLOCK_SIZE];
-            }
+            _localRadixSortShader.SetInt("bitOffset", bitOffset);
+            _globalRadixSortShader.SetInt("bitOffset", bitOffset);
 
-            for (uint threadId = 0; threadId < THREADS_PER_BLOCK; threadId++)
-            {
-                uint radix = _sortedLocalData[groupId * THREADS_PER_BLOCK + threadId];
-                uint indexOutput = sizesData[radix] + threadId - offsetData[radix];
+            _localRadixSortShader.Dispatch(_localRadixKernel, BLOCK_SIZE, 1, 1);
 
-                resultData[indexOutput] = _sortedLocalData[groupId * THREADS_PER_BLOCK + threadId];
-            }
+            _sizesData.GetData(_sizesLocalDataBeforeScan);
+            Debug.Log("Sizes before scan: " + ArrayToString(_sizesLocalDataBeforeScan));
+
+            _scanShader.Dispatch(_preScanKernel, BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE), 1, 1);
+            _scanShader.Dispatch(_blockSumKernel, 1, 1, 1);
+            _scanShader.Dispatch(_globalScanKernel, BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE), 1, 1);
+
+            _globalRadixSortShader.Dispatch(_globalRadixKernel, BLOCK_SIZE, 1, 1);
+
+            GetIntermediateDataBack();
+            ValidateIntermediateData(bitOffset);
         }
 
-        Debug.Log("");
-        Debug.Log("Should be: " + ArrayToString(resultData));
-        Debug.Log("");
+        GetSortedDataBack();
+        PrintData();
+
+        ValidateSortedData();
     }
 
-    void GetDataBack()
+    void GetIntermediateDataBack()
     {
-        _sortedData.GetData(_sortedLocalData);
+        _sortedBlocksData.GetData(_sortedBlockLocalData);
         _offsetsData.GetData(_offsetsLocalData);
         _sizesData.GetData(_sizesLocalDataAfterScan);
         _sizesPrefixSumData.GetData(_sizesPrefixSumLocalData);
+    }
+
+    void GetSortedDataBack()
+    {
+        _data.GetData(_sortedLocalData);
     }
 
     void PrintData()
@@ -147,33 +138,47 @@ public class ComputeArrayManager : MonoBehaviour
         Debug.Log("Sizes prefix sum after scan: " + ArrayToString(_sizesPrefixSumLocalData));
     }
 
-    void ValidateData()
+    void ValidateSortedData()
     {
-        Dictionary<uint, int> dataDictionary = new Dictionary<uint, int>(256);
-        for (uint i = 0; i < 256; i++)
+        // does output sorted data actually sorted?
+        for (uint i = 1; i < DATA_ARRAY_COUNT; i++)
         {
-            dataDictionary.Add(i, 0);
-        }
-
-        // does output sorted data contains all of the elements from input unsorted data? 
-        for (uint i = 0; i < DATA_ARRAY_COUNT; i++)
-        {
-            dataDictionary[_sortedLocalData[i]]++;
-            if (i == 0) continue;
             if (_sortedLocalData[i] < _sortedLocalData[i - 1])
             {
                 Debug.LogError("Output data has unsorted element on index " + i);
+                return;
             }
+        }
+
+        Debug.Log("Output data is sorted");
+    }
+
+    uint GetRadix(uint value, int bitOffset)
+    {
+        return (value >> bitOffset) & (BUCKET_SIZE - 1);
+    }
+
+    void ValidateIntermediateData(int bitOffset)
+    {
+        for (uint i = 0; i < 256; i++)
+        {
+            _debugDataDictionary[i] = 0;
+        } 
+        
+        // does output sorted data contains all of the elements from input unsorted data? 
+        for (uint i = 0; i < DATA_ARRAY_COUNT; i++)
+        {
+            _debugDataDictionary[GetRadix(_sortedBlockLocalData[i], bitOffset)]++;
         }
 
         for (uint i = 0; i < DATA_ARRAY_COUNT; i++)
         {
-            dataDictionary[_unsortedLocalData[i]]--;
+            _debugDataDictionary[GetRadix(_unsortedLocalData[i], bitOffset)]--;
         }
 
-        if (dataDictionary.All(x => x.Value == 0))
+        if (_debugDataDictionary.All(x => x.Value == 0))
         {
-            Debug.Log("Output data contains all of the elements from input array");
+            //Debug.Log("Output data contains all of the elements from input array");
         }
         else
         {
@@ -182,40 +187,38 @@ public class ComputeArrayManager : MonoBehaviour
 
         for (uint i = 0; i < 256; i++)
         {
-            dataDictionary[i] = 0;
+            _debugDataDictionary[i] = 0;
         }
 
         // Does sizes calculated correctly?
-        for (uint i = 0; i < 256; i++)
-        {
-            dataDictionary[i] = 0;
-        }
 
+        bool hasError = false;
         for (uint i = 0; i < BLOCK_SIZE; i++)
         {
             for (uint j = 0; j < THREADS_PER_BLOCK; j++)
             {
-                dataDictionary[_unsortedLocalData[i * THREADS_PER_BLOCK + j]]++;
+                _debugDataDictionary[GetRadix(_sortedBlockLocalData[i * THREADS_PER_BLOCK + j], bitOffset)]++;
             }
 
             for (uint k = 0; k < 256; k++)
             {
-                if (dataDictionary[k] != _sizesLocalDataBeforeScan[i + k * BLOCK_SIZE])
+                if (_debugDataDictionary[k] != _sizesLocalDataBeforeScan[i + k * BLOCK_SIZE])
                 {
-                    Debug.LogError("In block " + i + " amount of " + k + " is " + dataDictionary[k] + ", not " + _sizesLocalDataBeforeScan[i + k * BLOCK_SIZE]);
-                    // break;
+                    Debug.LogError("In block " + i + " amount of " + k + " is " + _debugDataDictionary[k] + ", not " + _sizesLocalDataBeforeScan[i + k * BLOCK_SIZE]);
+                    hasError = true;
+                    break;
                 }
             }
 
             for (uint k = 0; k < 256; k++)
             {
-                dataDictionary[k] = 0;
+                _debugDataDictionary[k] = 0;
             }
 
-            // if (hasError)
-            // {
-            //     break;
-            // }
+            if (hasError)
+            {
+                break;
+            }
         }
 
         // Does block prefix sum calculated correctly? 
@@ -250,8 +253,8 @@ public class ComputeArrayManager : MonoBehaviour
 
     private void OnDestroy()
     {
-        _unsortedData.Release();
-        _sortedData.Release();
+        _data.Release();
+        _sortedBlocksData.Release();
         _offsetsData.Release();
         _sizesData.Release();
         _sizesPrefixSumData.Release();

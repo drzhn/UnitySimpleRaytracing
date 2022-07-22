@@ -3,11 +3,13 @@
 
 #include <Assets/_Shaders/Constants.cginc>
 
-StructuredBuffer<uint> data; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<uint> sortedBlocksData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 StructuredBuffer<uint> offsetsData; // size = BLOCK_SIZE * BUCKET_SIZE
 StructuredBuffer<uint> sizesData; // size = BLOCK_SIZE * BUCKET_SIZE
 
 RWStructuredBuffer<uint> sortedData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+
+uniform int bitOffset;
 
 groupshared uint offsetsTile[BUCKET_SIZE];
 groupshared uint sizesTile[BUCKET_SIZE];
@@ -15,12 +17,10 @@ groupshared uint sizesTile[BUCKET_SIZE];
 [numthreads(THREADS_PER_BLOCK,1,1)]
 void GlobalRadixSort(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
 {
-    const uint bitOffset = 0;
-
     const uint threadId = tid.x;
     const uint groupId = gid.x;
 
-    const uint element = data[groupId * THREADS_PER_BLOCK + threadId];
+    const uint element = sortedBlocksData[groupId * THREADS_PER_BLOCK + threadId];
     if (threadId < BUCKET_SIZE)
     {
         offsetsTile[threadId] = offsetsData[groupId * BUCKET_SIZE + threadId];
