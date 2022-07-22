@@ -91,7 +91,9 @@ public class ComputeArrayManager : MonoBehaviour
 
         // _offsetsData.GetData(_offsetsLocalData);
         // _sizesData.GetData(_sizesLocalDataAfterScan);
-        // _data.GetData(_sortedData);
+        // _unsortedData.GetData(_sortedLocalData);
+        // Debug.Log("Data after local sort: " + ArrayToString(_sortedLocalData));
+
         // TryDataCPU();
 
         _globalRadixSortShader.Dispatch(_globalRadixKernel, BLOCK_SIZE, 1, 1);
