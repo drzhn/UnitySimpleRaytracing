@@ -1,7 +1,7 @@
 #pragma use_dxc
 #pragma kernel GlobalRadixSort
 
-#include <Assets/_Shaders/Constants.cginc>
+#include <Assets/Resources/Constants.cginc>
 
 StructuredBuffer<uint> sortedBlocksData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 StructuredBuffer<uint> offsetsData; // size = BLOCK_SIZE * BUCKET_SIZE

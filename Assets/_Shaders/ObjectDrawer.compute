@@ -1,0 +1,13 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel ObjectDrawer
+
+RWTexture2D<float4> _texture;
+
+uniform int screenWidth;
+uniform int screenHeight;
+
+[numthreads(32,32,1)]
+void ObjectDrawer (uint3 id : SV_DispatchThreadID)
+{
+    _texture[id.xy] = float4(1,0,0,1);
+}

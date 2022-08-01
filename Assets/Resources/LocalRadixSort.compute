@@ -1,7 +1,7 @@
 #pragma use_dxc
 #pragma kernel LocalRadixSort
 
-#include <Assets/_Shaders/Constants.cginc>
+#include <Assets/Resources/Constants.cginc>
 
 StructuredBuffer<uint> unsortedData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 
