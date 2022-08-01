@@ -2,11 +2,12 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-public class ComputeBufferSorter
+public class ComputeBufferSorter : IDisposable
 {
     private readonly ComputeShader _localRadixSortShader;
     private readonly ComputeShader _globalRadixSortShader;
@@ -18,8 +19,11 @@ public class ComputeBufferSorter
     private readonly int _globalScanKernel;
     private readonly int _globalRadixKernel;
 
-    private readonly ComputeBuffer _data;
-    private readonly ComputeBuffer _sortedBlocksData;
+    private readonly ComputeBuffer _keys;
+    private readonly ComputeBuffer _values;
+
+    private readonly ComputeBuffer _sortedBlocksKeysData;
+    private readonly ComputeBuffer _sortedBlocksValuesData;
     private readonly ComputeBuffer _offsetsData;
     private readonly ComputeBuffer _sizesData;
     private readonly ComputeBuffer _sizesPrefixSumData;
@@ -35,32 +39,29 @@ public class ComputeBufferSorter
 
     private readonly Dictionary<uint, int> _debugDataDictionary = new(256);
 
-    public ComputeBufferSorter()
+    public ComputeBufferSorter(ComputeBuffer keys, ComputeBuffer values, IShaderContainer shaderContainer)
     {
-        _localRadixSortShader = Resources.Load<ComputeShader>("Resources/LocalRadixSort.compute");
-        _globalRadixSortShader = Resources.Load<ComputeShader>("Resources/GlobalRadixSort.compute");
-        _scanShader = Resources.Load<ComputeShader>("Resources/Scan.compute");
+        _keys = keys;
+        _values = values;
 
+        _localRadixSortShader = shaderContainer.Sorting.LocalRadixSortShader;
+        _globalRadixSortShader = shaderContainer.Sorting.GlobalRadixSortShader;
+        _scanShader = shaderContainer.Sorting.ScanShader;
+        
 
-        _data = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
-        _sortedBlocksData = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
+        _sortedBlocksKeysData = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
+        _sortedBlocksValuesData = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
         _offsetsData = new ComputeBuffer(Constants.BUCKET_SIZE * Constants.BLOCK_SIZE, sizeof(uint), ComputeBufferType.Structured);
         _sizesData = new ComputeBuffer(Constants.BUCKET_SIZE * Constants.BLOCK_SIZE, sizeof(uint), ComputeBufferType.Structured);
         _sizesPrefixSumData = new ComputeBuffer(Constants.BLOCK_SIZE / (Constants.THREADS_PER_BLOCK / Constants.BUCKET_SIZE), sizeof(uint), ComputeBufferType.Structured);
 
-        // Generate random data
-        for (uint i = 0; i < Constants.DATA_ARRAY_COUNT; i++)
-        {
-            _unsortedLocalData[i] = (uint)Random.Range(0, uint.MaxValue);
-        }
-
-        _data.SetData(_unsortedLocalData);
-
         // Set data
 
         _localRadixKernel = _localRadixSortShader.FindKernel("LocalRadixSort");
-        _localRadixSortShader.SetBuffer(_localRadixKernel, "unsortedData", _data);
-        _localRadixSortShader.SetBuffer(_localRadixKernel, "sortedBlocksData", _sortedBlocksData);
+        _localRadixSortShader.SetBuffer(_localRadixKernel, "keysData", _keys);
+        _localRadixSortShader.SetBuffer(_localRadixKernel, "valuesData", _values);
+        _localRadixSortShader.SetBuffer(_localRadixKernel, "sortedBlocksKeysData", _sortedBlocksKeysData);
+        _localRadixSortShader.SetBuffer(_localRadixKernel, "sortedBlocksValuesData", _sortedBlocksValuesData);
         _localRadixSortShader.SetBuffer(_localRadixKernel, "offsetsData", _offsetsData);
         _localRadixSortShader.SetBuffer(_localRadixKernel, "sizesData", _sizesData);
 
@@ -75,19 +76,24 @@ public class ComputeBufferSorter
         _scanShader.SetBuffer(_globalScanKernel, "blockSumsData", _sizesPrefixSumData);
 
         _globalRadixKernel = _globalRadixSortShader.FindKernel("GlobalRadixSort");
-        _globalRadixSortShader.SetBuffer(_globalRadixKernel, "sortedBlocksData", _sortedBlocksData);
+        _globalRadixSortShader.SetBuffer(_globalRadixKernel, "sortedBlocksKeysData", _sortedBlocksKeysData);
+        _globalRadixSortShader.SetBuffer(_globalRadixKernel, "sortedBlocksValuesData", _sortedBlocksValuesData);
         _globalRadixSortShader.SetBuffer(_globalRadixKernel, "offsetsData", _offsetsData);
         _globalRadixSortShader.SetBuffer(_globalRadixKernel, "sizesData", _sizesData);
-        _globalRadixSortShader.SetBuffer(_globalRadixKernel, "sortedData", _data);
+        _globalRadixSortShader.SetBuffer(_globalRadixKernel, "sortedKeysData", _keys);
+        _globalRadixSortShader.SetBuffer(_globalRadixKernel, "sortedValuesData", _values);
 
         // debug data
+        
+        _keys.GetData(_unsortedLocalData);
+        
         for (uint i = 0; i < 256; i++)
         {
             _debugDataDictionary.Add(i, 0);
         }
     }
 
-    void Start()
+    public void Sort()
     {
         for (int bitOffset = 0; bitOffset < 32; bitOffset += Constants.RADIX)
         {
@@ -117,7 +123,7 @@ public class ComputeBufferSorter
 
     void GetIntermediateDataBack()
     {
-        _sortedBlocksData.GetData(_sortedBlockLocalData);
+        _sortedBlocksKeysData.GetData(_sortedBlockLocalData);
         _offsetsData.GetData(_offsetsLocalData);
         _sizesData.GetData(_sizesLocalDataAfterScan);
         _sizesPrefixSumData.GetData(_sizesPrefixSumLocalData);
@@ -125,7 +131,7 @@ public class ComputeBufferSorter
 
     void GetSortedDataBack()
     {
-        _data.GetData(_sortedLocalData);
+        _keys.GetData(_sortedLocalData);
     }
 
     void PrintData()
@@ -250,10 +256,10 @@ public class ComputeBufferSorter
         return builder;
     }
 
-    private void OnDestroy()
+    public void Dispose()
     {
-        _data.Release();
-        _sortedBlocksData.Release();
+        _sortedBlocksKeysData.Release();
+        _sortedBlocksValuesData.Release();
         _offsetsData.Release();
         _sizesData.Release();
         _sizesPrefixSumData.Release();

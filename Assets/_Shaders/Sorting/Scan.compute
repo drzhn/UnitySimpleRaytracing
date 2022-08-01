@@ -3,7 +3,7 @@
 #pragma kernel BlockSum
 #pragma kernel GlobalScan
 
-#include <Assets/Resources/Constants.cginc>
+#include <Assets/_Shaders/Constants.cginc>
 
 RWStructuredBuffer<uint> data; // size = BUCKET_SIZE * BLOCK_SIZE
 RWStructuredBuffer<uint> blockSumsData; // size = BLOCK_SIZE / (THREADS_PER_BLOCK / BUCKET_SIZE)

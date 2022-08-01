@@ -9,10 +9,13 @@ public class RaytracingMeshDrawer : MonoBehaviour
     [SerializeField] private ComputeShader _objectDrawer;
     [SerializeField] private Shader _imageComposer;
     [SerializeField] private Mesh _mesh;
+    [SerializeField] private ShaderContainer _shaderContainer; 
+    
 
     private int _objectDrawerKernel;
 
-    private MeshBufferContainer _container; 
+    private MeshBufferContainer _container;
+    private ComputeBufferSorter _sorter;
     private RenderTexture _renderTexture;
     private Material _imageComposerMaterial;
     private static readonly int ObjectTexture = Shader.PropertyToID("_ObjectTexture");
@@ -129,22 +132,23 @@ public class RaytracingMeshDrawer : MonoBehaviour
 
     void Awake()
     {
-        uint[] array = new uint[]
-        {
-            1, 2, 4, 5, 19, 24, 25, 30
-        };
-
-        for (var i = 0; i < array.Length - 1; i++)
-        {
-            Range d = DetermineRange(array, array.Length, i);
-            print(d + " - " + FindSplit(array, d.start, d.end));
-        }
+        // uint[] array = new uint[]
+        // {
+        //     1, 2, 4, 5, 19, 24, 25, 30
+        // };
+        //
+        // for (var i = 0; i < array.Length - 1; i++)
+        // {
+        //     Range d = DetermineRange(array, array.Length, i);
+        //     print(d + " - " + FindSplit(array, d.start, d.end));
+        // }
 
         _container = new MeshBufferContainer(_mesh);
-
+        _sorter = new ComputeBufferSorter(_container.Keys, _container.TriangleIndex, _shaderContainer);
+        
+        _sorter.Sort();
 
         _renderTexture = new RenderTexture(1024, 1024, GraphicsFormat.R16G16B16A16_SFloat, GraphicsFormat.D32_SFloat);
-
         _renderTexture.enableRandomWrite = true;
 
         _objectDrawerKernel = _objectDrawer.FindKernel("ObjectDrawer");
@@ -168,6 +172,7 @@ public class RaytracingMeshDrawer : MonoBehaviour
 
     private void OnDestroy()
     {
+        _sorter.Dispose();
         _container.Dispose();
     }
 }
