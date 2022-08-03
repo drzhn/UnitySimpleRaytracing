@@ -59,7 +59,7 @@ public class MeshBufferContainer : IDisposable
         return xx * 4 + yy * 2 + zz;
     }
 
-    private static Vector3 GetCentroid(Vector3 a, Vector3 b, Vector3 c)
+    private static void GetCentroidAndAABB(Vector3 a, Vector3 b, Vector3 c, out Vector3 centroid, out AABB aabb)
     {
         Vector3 min = new Vector3(
             Math.Min(Math.Min(a.x, b.x), c.x),
@@ -72,7 +72,12 @@ public class MeshBufferContainer : IDisposable
             Math.Max(Math.Max(a.z, b.z), c.z)
         );
 
-        return (min + max) * 0.5f;
+        centroid = (min + max) * 0.5f;
+        aabb = new AABB
+        {
+            min = min,
+            max = max
+        };
     }
 
     private static Vector3 NormalizeCentroid(Vector3 centroid)
@@ -90,9 +95,11 @@ public class MeshBufferContainer : IDisposable
     private readonly ComputeBuffer _keysBuffer;
     private readonly ComputeBuffer _triangleIndexBuffer;
     private readonly ComputeBuffer _triangleDataBuffer;
+    private readonly ComputeBuffer _aabbDataBuffer;
 
     private readonly uint[] _keysLocalData = new uint[Constants.DATA_ARRAY_COUNT];
     private readonly uint[] _triangleIndexLocalData = new uint[Constants.DATA_ARRAY_COUNT];
+    private readonly AABB[] _aabbLocalData = new AABB[Constants.DATA_ARRAY_COUNT];
     private readonly Triangle[] _triangleDataLocalData = new Triangle[Constants.DATA_ARRAY_COUNT];
 
     public MeshBufferContainer(Mesh mesh) // TODO multiple meshes
@@ -102,9 +109,15 @@ public class MeshBufferContainer : IDisposable
             Debug.LogError("Triangle struct size = " + Marshal.SizeOf(typeof(Triangle)) + ", not 48");
         }
 
+        if (Marshal.SizeOf(typeof(AABB)) != 32)
+        {
+            Debug.LogError("AABB struct size = " + Marshal.SizeOf(typeof(AABB)) + ", not 32");
+        }
+
         _keysBuffer = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
         _triangleIndexBuffer = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
         _triangleDataBuffer = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, Marshal.SizeOf(typeof(Triangle)), ComputeBufferType.Structured);
+        _aabbDataBuffer = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, Marshal.SizeOf(typeof(AABB)), ComputeBufferType.Structured);
 
         Vector3[] vertices = mesh.vertices;
         int[] triangles = mesh.triangles;
@@ -115,7 +128,8 @@ public class MeshBufferContainer : IDisposable
             Vector3 a = vertices[triangles[i * 3 + 0]];
             Vector3 b = vertices[triangles[i * 3 + 1]];
             Vector3 c = vertices[triangles[i * 3 + 2]];
-            Vector3 centroid = NormalizeCentroid(GetCentroid(a, b, c));
+            GetCentroidAndAABB(a, b, c, out var centroid, out var aabb);
+            centroid = NormalizeCentroid(centroid);
             uint mortonCode = Morton3D(centroid.x, centroid.y, centroid.z);
             _keysLocalData[i] = mortonCode;
             _triangleIndexLocalData[i] = i;
@@ -125,6 +139,7 @@ public class MeshBufferContainer : IDisposable
                 b = b,
                 c = c
             };
+            _aabbLocalData[i] = aabb;
         }
 
         for (var i = trianglesLength; i < Constants.DATA_ARRAY_COUNT; i++)
@@ -136,6 +151,7 @@ public class MeshBufferContainer : IDisposable
         _keysBuffer.SetData(_keysLocalData);
         _triangleIndexBuffer.SetData(_triangleIndexLocalData);
         _triangleDataBuffer.SetData(_triangleDataLocalData);
+        _aabbDataBuffer.SetData(_aabbLocalData);
     }
 
 
@@ -144,5 +160,6 @@ public class MeshBufferContainer : IDisposable
         _keysBuffer.Dispose();
         _triangleIndexBuffer.Dispose();
         _triangleDataBuffer.Dispose();
+        _aabbDataBuffer.Dispose();
     }
 }
