@@ -7,13 +7,18 @@
 
 struct AABB
 {
-    float4 min;
-    float4 max;
+    float3 min;
+    float _dummy0;
+    float3 max;
+    float _dummy1;
 };
 
 struct Triangle
 {
-    float4 a;
-    float4 b;
-    float4 c;
+    float3 a;
+    float _dummy0;
+    float3 b;
+    float _dummy1;
+    float3 c;
+    float _dummy2;
 };

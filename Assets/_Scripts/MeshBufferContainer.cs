@@ -7,16 +7,21 @@ using UnityEngine;
 [StructLayout(LayoutKind.Sequential, Pack = 16)]
 public struct AABB
 {
-    public Vector4 min;
-    public Vector4 max;
+    public Vector3 min;
+    public float _dummy0;
+    public Vector3 max;
+    public float _dummy1;
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 16)]
 public struct Triangle
 {
-    public Vector4 a;
-    public Vector4 b;
-    public Vector4 c;
+    public Vector3 a;
+    public float _dummy0;
+    public Vector3 b;
+    public float _dummy1;
+    public Vector3 c;
+    public float _dummy2;
 
     // TODO uv, texture index, etc
 }
@@ -26,8 +31,8 @@ public class MeshBufferContainer : IDisposable
     // TODO reduce scene data for finding AABB scene in runtime
     private static readonly AABB Whole = new AABB()
     {
-        min = new Vector4(-3, -3, -1, 1),
-        max = new Vector4(3, 3, 1, 1)
+        min = new Vector3(-3, -3, -1),
+        max = new Vector3(3, 3, 1)
     };
 
     public ComputeBuffer Keys => _keysBuffer;
@@ -92,6 +97,11 @@ public class MeshBufferContainer : IDisposable
 
     public MeshBufferContainer(Mesh mesh) // TODO multiple meshes
     {
+        if (Marshal.SizeOf(typeof(Triangle)) != 48)
+        {
+            Debug.LogError("Triangle struct size = " + Marshal.SizeOf(typeof(Triangle)) + ", not 48");
+        }
+
         _keysBuffer = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
         _triangleIndexBuffer = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
         _triangleDataBuffer = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, Marshal.SizeOf(typeof(Triangle)), ComputeBufferType.Structured);
@@ -111,9 +121,9 @@ public class MeshBufferContainer : IDisposable
             _triangleIndexLocalData[i] = i;
             _triangleDataLocalData[i] = new Triangle
             {
-                a = new Vector4(a.x, a.y, a.z, 1),
-                b = new Vector4(b.x, b.y, b.z, 1),
-                c = new Vector4(c.x, c.y, c.z, 1)
+                a = a,
+                b = b,
+                c = c
             };
         }
 
