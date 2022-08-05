@@ -6,6 +6,7 @@ using UnityEngine;
 public interface IShaderContainer
 {
     public SortingShaderContainer Sorting { get; }
+    public BVHShaderContainer BVH { get; }
 }
 
 [Serializable]
@@ -21,9 +22,18 @@ public class SortingShaderContainer
 }
 
 [Serializable]
+public class BVHShaderContainer
+{
+    public ComputeShader BVHShader => _BVHShader;
+    [SerializeField] private ComputeShader _BVHShader;
+}
+
+[Serializable]
 public class ShaderContainer : MonoBehaviour, IShaderContainer
 {
     public SortingShaderContainer Sorting => _sorting;
+    public BVHShaderContainer BVH => _bvh;
 
     [SerializeField] private SortingShaderContainer _sorting;
+    [SerializeField] private BVHShaderContainer _bvh;
 }

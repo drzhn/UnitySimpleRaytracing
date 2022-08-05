@@ -103,7 +103,7 @@ public class ComputeBufferSorter : IDisposable
             _localRadixSortShader.Dispatch(_localRadixKernel, Constants.BLOCK_SIZE, 1, 1);
 
             _sizesData.GetData(_sizesLocalDataBeforeScan);
-            Debug.Log("Sizes before scan: " + ArrayToString(_sizesLocalDataBeforeScan));
+            Debug.Log("Sizes before scan: " + Utils.ArrayToString(_sizesLocalDataBeforeScan));
 
             _scanShader.Dispatch(_preScanKernel, Constants.BLOCK_SIZE / (Constants.THREADS_PER_BLOCK / Constants.BUCKET_SIZE), 1, 1);
             _scanShader.Dispatch(_blockSumKernel, 1, 1, 1);
@@ -136,11 +136,11 @@ public class ComputeBufferSorter : IDisposable
 
     void PrintData()
     {
-        Debug.Log("Unsorted data: " + ArrayToString(_unsortedLocalData));
-        Debug.Log("Sorted data: " + ArrayToString(_sortedLocalData));
-        Debug.Log("Offsets local data: " + ArrayToString(_offsetsLocalData));
-        Debug.Log("Sizes after scan: " + ArrayToString(_sizesLocalDataAfterScan));
-        Debug.Log("Sizes prefix sum after scan: " + ArrayToString(_sizesPrefixSumLocalData));
+        Debug.Log("Unsorted data: " + Utils.ArrayToString(_unsortedLocalData));
+        Debug.Log("Sorted data: " + Utils.ArrayToString(_sortedLocalData));
+        Debug.Log("Offsets local data: " + Utils.ArrayToString(_offsetsLocalData));
+        Debug.Log("Sizes after scan: " + Utils.ArrayToString(_sizesLocalDataAfterScan));
+        Debug.Log("Sizes prefix sum after scan: " + Utils.ArrayToString(_sizesPrefixSumLocalData));
     }
 
     void ValidateSortedData()
@@ -242,18 +242,6 @@ public class ComputeBufferSorter : IDisposable
         {
             Debug.Log("Scan operation is correct");
         }
-    }
-
-    private static StringBuilder ArrayToString(uint[] array, uint maxElements = 4096)
-    {
-        StringBuilder builder = new StringBuilder("");
-        for (var i = 0; i < array.Length; i++)
-        {
-            if (i >= maxElements) break;
-            builder.Append(array[i] + " ");
-        }
-
-        return builder;
     }
 
     public void Dispose()

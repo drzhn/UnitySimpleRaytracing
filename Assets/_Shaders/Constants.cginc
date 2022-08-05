@@ -13,6 +13,25 @@ struct AABB
     float _dummy1;
 };
 
+#define INTERNAL_NODE 0
+#define LEAF_NODE 1
+
+struct InternalNode
+{
+    uint leftNode;
+    uint leftNodeType;
+    uint rightNode;
+    uint rightNodeType;
+    uint parent;
+    uint index;
+};
+
+struct LeafNode
+{
+    uint parent;
+    uint index;
+};
+
 struct Triangle
 {
     float3 a;

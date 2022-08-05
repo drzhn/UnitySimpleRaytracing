@@ -38,6 +38,7 @@ public class MeshBufferContainer : IDisposable
     public ComputeBuffer Keys => _keysBuffer;
     public ComputeBuffer TriangleIndex => _triangleIndexBuffer;
     public ComputeBuffer TriangleData => _triangleDataBuffer;
+    public int TrianglesLength => _trianglesLength;
 
     private static uint ExpandBits(uint v)
     {
@@ -92,6 +93,8 @@ public class MeshBufferContainer : IDisposable
         return ret;
     }
 
+    private readonly int _trianglesLength;
+
     private readonly ComputeBuffer _keysBuffer;
     private readonly ComputeBuffer _triangleIndexBuffer;
     private readonly ComputeBuffer _triangleDataBuffer;
@@ -121,9 +124,9 @@ public class MeshBufferContainer : IDisposable
 
         Vector3[] vertices = mesh.vertices;
         int[] triangles = mesh.triangles;
-        int trianglesLength = triangles.Length / 3;
+        _trianglesLength = triangles.Length / 3;
 
-        for (uint i = 0; i < trianglesLength; i++)
+        for (uint i = 0; i < _trianglesLength; i++)
         {
             Vector3 a = vertices[triangles[i * 3 + 0]];
             Vector3 b = vertices[triangles[i * 3 + 1]];
@@ -142,7 +145,7 @@ public class MeshBufferContainer : IDisposable
             _aabbLocalData[i] = aabb;
         }
 
-        for (var i = trianglesLength; i < Constants.DATA_ARRAY_COUNT; i++)
+        for (var i = _trianglesLength; i < Constants.DATA_ARRAY_COUNT; i++)
         {
             _keysLocalData[i] = uint.MaxValue;
             _triangleIndexLocalData[i] = uint.MaxValue;
