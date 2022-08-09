@@ -1,29 +1,68 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-[StructLayout(LayoutKind.Sequential, Pack = 16)]
-public struct AABB
+public class DataBuffer<T> : IDisposable where T : struct
 {
-    public Vector3 min;
-    public float _dummy0;
-    public Vector3 max;
-    public float _dummy1;
-}
+    public ComputeBuffer DeviceBuffer => _deviceBuffer;
+    public T[] LocalBuffer => _localBuffer;
 
-[StructLayout(LayoutKind.Sequential, Pack = 16)]
-public struct Triangle
-{
-    public Vector3 a;
-    public float _dummy0;
-    public Vector3 b;
-    public float _dummy1;
-    public Vector3 c;
-    public float _dummy2;
+    private readonly ComputeBuffer _deviceBuffer;
+    private readonly T[] _localBuffer;
+    private bool _synced;
 
-    // TODO uv, texture index, etc
+    public DataBuffer(int size, T initialValue) : this(size)
+    {
+        for (int i = 0; i < size; i++)
+        {
+            _localBuffer[i] = initialValue;
+        }
+
+        _deviceBuffer.SetData(_localBuffer);
+        _synced = true;
+    }
+
+    public DataBuffer(int size)
+    {
+        _deviceBuffer = new ComputeBuffer(size, Marshal.SizeOf(typeof(T)), ComputeBufferType.Structured);
+        _localBuffer = new T[size];
+        _synced = false;
+    }
+
+    public T this[uint i]
+    {
+        get
+        {
+            if (!_synced)
+            {
+                GetData();
+            }
+
+            return _localBuffer[i];
+        }
+        set
+        {
+            _localBuffer[i] = value;
+            _synced = false;
+        }
+    }
+
+    public void GetData()
+    {
+        _deviceBuffer.GetData(_localBuffer);
+        _synced = true;
+    }
+
+    public void Sync()
+    {
+        _deviceBuffer.SetData(_localBuffer);
+        _synced = true;
+    }
+
+    public void Dispose()
+    {
+        _deviceBuffer.Release();
+    }
 }
 
 public class MeshBufferContainer : IDisposable
@@ -35,9 +74,16 @@ public class MeshBufferContainer : IDisposable
         max = new Vector3(3, 3, 1)
     };
 
-    public ComputeBuffer Keys => _keysBuffer;
-    public ComputeBuffer TriangleIndex => _triangleIndexBuffer;
-    public ComputeBuffer TriangleData => _triangleDataBuffer;
+    public ComputeBuffer Keys => _keysBuffer.DeviceBuffer;
+    public ComputeBuffer TriangleIndex => _triangleIndexBuffer.DeviceBuffer;
+    public ComputeBuffer TriangleData => _triangleDataBuffer.DeviceBuffer;
+    public ComputeBuffer TriangleAABB => _triangleAABBBuffer.DeviceBuffer;
+    public ComputeBuffer BvhData => _bvhDataBuffer.DeviceBuffer;
+    public ComputeBuffer BvhLeafNode => _bvhLeafNodesBuffer.DeviceBuffer;
+    public ComputeBuffer BvhInternalNode => _bvhInternalNodesBuffer.DeviceBuffer;
+    
+    public AABB[] TriangleAABBLocalData => _triangleAABBBuffer.LocalBuffer;
+    public AABB[] BVHLocalData => _bvhDataBuffer.LocalBuffer;
     public int TrianglesLength => _trianglesLength;
 
     private static uint ExpandBits(uint v)
@@ -95,15 +141,14 @@ public class MeshBufferContainer : IDisposable
 
     private readonly int _trianglesLength;
 
-    private readonly ComputeBuffer _keysBuffer;
-    private readonly ComputeBuffer _triangleIndexBuffer;
-    private readonly ComputeBuffer _triangleDataBuffer;
-    private readonly ComputeBuffer _aabbDataBuffer;
+    private readonly DataBuffer<uint> _keysBuffer;
+    private readonly DataBuffer<uint> _triangleIndexBuffer;
+    private readonly DataBuffer<Triangle> _triangleDataBuffer;
+    private readonly DataBuffer<AABB> _triangleAABBBuffer;
 
-    private readonly uint[] _keysLocalData = new uint[Constants.DATA_ARRAY_COUNT];
-    private readonly uint[] _triangleIndexLocalData = new uint[Constants.DATA_ARRAY_COUNT];
-    private readonly AABB[] _aabbLocalData = new AABB[Constants.DATA_ARRAY_COUNT];
-    private readonly Triangle[] _triangleDataLocalData = new Triangle[Constants.DATA_ARRAY_COUNT];
+    private readonly DataBuffer<AABB> _bvhDataBuffer;
+    private readonly DataBuffer<LeafNode> _bvhLeafNodesBuffer;
+    private readonly DataBuffer<InternalNode> _bvhInternalNodesBuffer;
 
     public MeshBufferContainer(Mesh mesh) // TODO multiple meshes
     {
@@ -117,10 +162,14 @@ public class MeshBufferContainer : IDisposable
             Debug.LogError("AABB struct size = " + Marshal.SizeOf(typeof(AABB)) + ", not 32");
         }
 
-        _keysBuffer = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
-        _triangleIndexBuffer = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
-        _triangleDataBuffer = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, Marshal.SizeOf(typeof(Triangle)), ComputeBufferType.Structured);
-        _aabbDataBuffer = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, Marshal.SizeOf(typeof(AABB)), ComputeBufferType.Structured);
+        _keysBuffer = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, uint.MaxValue);
+        _triangleIndexBuffer = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, uint.MaxValue);
+        _triangleDataBuffer = new DataBuffer<Triangle>(Constants.DATA_ARRAY_COUNT);
+        _triangleAABBBuffer = new DataBuffer<AABB>(Constants.DATA_ARRAY_COUNT);
+
+        _bvhDataBuffer = new DataBuffer<AABB>(Constants.DATA_ARRAY_COUNT);
+        _bvhLeafNodesBuffer = new DataBuffer<LeafNode>(Constants.DATA_ARRAY_COUNT);
+        _bvhInternalNodesBuffer = new DataBuffer<InternalNode>(Constants.DATA_ARRAY_COUNT);
 
         Vector3[] vertices = mesh.vertices;
         int[] triangles = mesh.triangles;
@@ -134,27 +183,32 @@ public class MeshBufferContainer : IDisposable
             GetCentroidAndAABB(a, b, c, out var centroid, out var aabb);
             centroid = NormalizeCentroid(centroid);
             uint mortonCode = Morton3D(centroid.x, centroid.y, centroid.z);
-            _keysLocalData[i] = mortonCode;
-            _triangleIndexLocalData[i] = i;
-            _triangleDataLocalData[i] = new Triangle
+            _keysBuffer[i] = mortonCode;
+            _triangleIndexBuffer[i] = i;
+            _triangleDataBuffer[i] = new Triangle
             {
                 a = a,
                 b = b,
                 c = c
             };
-            _aabbLocalData[i] = aabb;
+            _triangleAABBBuffer[i] = aabb;
         }
 
-        for (var i = _trianglesLength; i < Constants.DATA_ARRAY_COUNT; i++)
-        {
-            _keysLocalData[i] = uint.MaxValue;
-            _triangleIndexLocalData[i] = uint.MaxValue;
-        }
+        _keysBuffer.Sync();
+        _triangleIndexBuffer.Sync();
+        _triangleDataBuffer.Sync();
+        _triangleAABBBuffer.Sync();
+    }
 
-        _keysBuffer.SetData(_keysLocalData);
-        _triangleIndexBuffer.SetData(_triangleIndexLocalData);
-        _triangleDataBuffer.SetData(_triangleDataLocalData);
-        _aabbDataBuffer.SetData(_aabbLocalData);
+    public void GetAllGpuData()
+    {
+        _keysBuffer.GetData();
+        _triangleIndexBuffer.GetData();
+        _triangleDataBuffer.GetData();
+        _triangleAABBBuffer.GetData();
+        _bvhDataBuffer.GetData();
+        _bvhLeafNodesBuffer.GetData();
+        _bvhInternalNodesBuffer.GetData();
     }
 
 
@@ -163,6 +217,9 @@ public class MeshBufferContainer : IDisposable
         _keysBuffer.Dispose();
         _triangleIndexBuffer.Dispose();
         _triangleDataBuffer.Dispose();
-        _aabbDataBuffer.Dispose();
+        _triangleAABBBuffer.Dispose();
+        _bvhDataBuffer.Dispose();
+        _bvhLeafNodesBuffer.Dispose();
+        _bvhInternalNodesBuffer.Dispose();
     }
 }

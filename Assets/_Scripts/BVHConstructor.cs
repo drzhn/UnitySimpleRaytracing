@@ -7,98 +7,95 @@ using UnityEngine;
 public class BVHConstructor : IDisposable
 {
     private readonly ComputeBuffer _sortedMortonCodes;
+    private readonly ComputeBuffer _sortedTriangleIndices;
+    private readonly ComputeBuffer _triangleAABB;
+
     private readonly ComputeBuffer _internalNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
     private readonly ComputeBuffer _leafNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+    private readonly ComputeBuffer _bvhData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+    private readonly DataBuffer<uint> _atomics; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 
-    private ComputeShader _bvhShader;
-    private int _treeConstructionKernel;
+    private readonly ComputeShader _bvhShader;
+    private readonly int _treeConstructionKernel;
+    private readonly int _bvhConstructionKernel;
 
-    struct InternalNode
+    private readonly int _trianglesCount;
+
+    public BVHConstructor(
+        int trianglesCount,
+        ComputeBuffer sortedMortonCodes,
+        ComputeBuffer sortedTriangleIndices,
+        ComputeBuffer triangleAABB,
+        ComputeBuffer internalNodes,
+        ComputeBuffer leafNodes,
+        ComputeBuffer BVHData,
+        IShaderContainer container)
     {
-        public uint leftNode;
-        public uint leftNodeType;
-        public uint rightNode;
-        public uint rightNodeType;
-        public uint parent;
-        public uint index;
+        _sortedMortonCodes = sortedMortonCodes;
+        _sortedTriangleIndices = sortedTriangleIndices;
+        _triangleAABB = triangleAABB;
 
-        public override string ToString()
-        {
-            string GetType(uint type)
-            {
-                return type == 0 ? "I" : "L";
-            }
-
-            return $"index:{index}, left:{leftNode} {GetType(leftNodeType)}, right:{rightNode} {GetType(rightNodeType)}, parent:{parent}\n";
-        }
-    };
-
-    struct LeafNode
-    {
-        public uint parent;
-        public uint index;
-
-        public override string ToString()
-        {
-            return $"index:{index}, parent:{parent}\n";
-        }
-    };
-
-    public BVHConstructor(IShaderContainer container)
-    {
-        uint[] array = new uint[]
-        {
-            1, 2, 4, 5, 19, 24, 25, 30
-        };
-
-        InternalNode[] internalNodes = new InternalNode[array.Length - 1];
-        for (var i = 0; i < internalNodes.Length; i++)
-        {
-            internalNodes[i].leftNode = 0xFFFFFFFF;
-            internalNodes[i].leftNodeType = 0xFFFFFFFF;
-            internalNodes[i].rightNode = 0xFFFFFFFF;
-            internalNodes[i].rightNodeType = 0xFFFFFFFF;
-            internalNodes[i].parent = 0xFFFFFFFF;
-            internalNodes[i].index = 0xFFFFFFFF;
-        }
-
-        LeafNode[] leafNodes = new LeafNode[array.Length];
-        for (var i = 0; i < leafNodes.Length; i++)
-        {
-            leafNodes[i].parent = 0xFFFFFFFF;
-            leafNodes[i].index = 0xFFFFFFFF;
-        }
-
-
-        _sortedMortonCodes = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
-        _internalNodes = new ComputeBuffer(array.Length - 1, Marshal.SizeOf(typeof(InternalNode)), ComputeBufferType.Structured);
-        _leafNodes = new ComputeBuffer(array.Length, Marshal.SizeOf(typeof(LeafNode)), ComputeBufferType.Structured);
-
-        _sortedMortonCodes.SetData(array);
-        _internalNodes.SetData(internalNodes);
-        _leafNodes.SetData(leafNodes);
+        _internalNodes = internalNodes;
+        _leafNodes = leafNodes;
+        _bvhData = BVHData;
+        _atomics = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, 0);
+        _trianglesCount = trianglesCount;
 
         _bvhShader = container.BVH.BVHShader;
         _treeConstructionKernel = _bvhShader.FindKernel("TreeConstructor");
+        _bvhConstructionKernel = _bvhShader.FindKernel("BVHConstructor");
 
-        _bvhShader.SetInt("trianglesCount", array.Length);
+        _bvhShader.SetInt("trianglesCount", trianglesCount);
         _bvhShader.SetBuffer(_treeConstructionKernel, "sortedMortonCodes", _sortedMortonCodes);
         _bvhShader.SetBuffer(_treeConstructionKernel, "internalNodes", _internalNodes);
         _bvhShader.SetBuffer(_treeConstructionKernel, "leafNodes", _leafNodes);
 
+        _bvhShader.SetBuffer(_bvhConstructionKernel, "internalNodes", _internalNodes);
+        _bvhShader.SetBuffer(_bvhConstructionKernel, "leafNodes", _leafNodes);
+        _bvhShader.SetBuffer(_bvhConstructionKernel, "triangleAABB", _triangleAABB);
+        _bvhShader.SetBuffer(_bvhConstructionKernel, "sortedTriangleIndices", _sortedTriangleIndices);
+        _bvhShader.SetBuffer(_bvhConstructionKernel, "atomicsData", _atomics.DeviceBuffer);
+        _bvhShader.SetBuffer(_bvhConstructionKernel, "BVHData", _bvhData);
+
+
+        // _internalNodes.GetData(internalNodes);
+        // _leafNodes.GetData(leafNodes);
+        //
+        // Debug.Log(Utils.ArrayToString(leafNodes));
+        // Debug.Log(Utils.ArrayToString(internalNodes));
+    }
+
+    public void ConstructTree()
+    {
         _bvhShader.Dispatch(_treeConstructionKernel, Constants.BLOCK_SIZE, 1, 1);
+        
+        uint[] sortedTriangleIndices = new uint[_trianglesCount];
+        _sortedTriangleIndices.GetData(sortedTriangleIndices);
+        Debug.Log(Utils.ArrayToString(sortedTriangleIndices));
 
+        InternalNode[] internalNodes = new InternalNode[_trianglesCount - 1];
         _internalNodes.GetData(internalNodes);
-        _leafNodes.GetData(leafNodes);
-
-        Debug.Log(Utils.ArrayToString(leafNodes));
         Debug.Log(Utils.ArrayToString(internalNodes));
+
+        LeafNode[] leafNodes = new LeafNode[_trianglesCount];
+        _leafNodes.GetData(leafNodes);
+        Debug.Log(Utils.ArrayToString(leafNodes));
+    }
+
+    public void ConstructBVH()
+    {
+        _bvhShader.Dispatch(_bvhConstructionKernel, Constants.BLOCK_SIZE, 1, 1);
+        
+        AABB[] aabbs = new AABB[_trianglesCount - 1];
+        _bvhData.GetData(aabbs);
+        Debug.Log(Utils.ArrayToString(aabbs));
+        
+        _atomics.GetData();
+        Debug.Log(Utils.ArrayToString(_atomics.LocalBuffer));
     }
 
     public void Dispose()
     {
-        _sortedMortonCodes.Dispose();
-        _internalNodes.Dispose();
-        _leafNodes.Dispose();
+        _atomics.Dispose();
     }
 }

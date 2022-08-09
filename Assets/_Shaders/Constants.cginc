@@ -19,7 +19,7 @@ struct AABB
 struct InternalNode
 {
     uint leftNode;
-    uint leftNodeType;
+    uint leftNodeType; // TODO combine node types in one 4 byte word 
     uint rightNode;
     uint rightNodeType;
     uint parent;

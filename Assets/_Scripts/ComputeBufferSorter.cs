@@ -103,7 +103,7 @@ public class ComputeBufferSorter : IDisposable
             _localRadixSortShader.Dispatch(_localRadixKernel, Constants.BLOCK_SIZE, 1, 1);
 
             _sizesData.GetData(_sizesLocalDataBeforeScan);
-            Debug.Log("Sizes before scan: " + Utils.ArrayToString(_sizesLocalDataBeforeScan));
+            // Debug.Log("Sizes before scan: " + Utils.ArrayToString(_sizesLocalDataBeforeScan));
 
             _scanShader.Dispatch(_preScanKernel, Constants.BLOCK_SIZE / (Constants.THREADS_PER_BLOCK / Constants.BUCKET_SIZE), 1, 1);
             _scanShader.Dispatch(_blockSumKernel, 1, 1, 1);
@@ -116,7 +116,7 @@ public class ComputeBufferSorter : IDisposable
         }
 
         GetSortedDataBack();
-        PrintData();
+        // PrintData();
 
         ValidateSortedData();
     }
@@ -240,7 +240,7 @@ public class ComputeBufferSorter : IDisposable
 
         if (!hasSizesPrefixSumError)
         {
-            Debug.Log("Scan operation is correct");
+            Debug.Log($"Scan operation for bit offset {bitOffset} is correct");
         }
     }
 
