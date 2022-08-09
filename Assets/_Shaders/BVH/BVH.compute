@@ -1,3 +1,4 @@
+#pragma use_dxc
 #pragma kernel TreeConstructor
 #pragma kernel BVHConstructor
 
@@ -196,7 +197,7 @@ void BVHConstructor(uint3 id : SV_DispatchThreadID)
             const uint leftType = internalNodes[parent].leftNodeType;
             const uint rightId = internalNodes[parent].rightNode;
             const uint rightType = internalNodes[parent].rightNodeType;
-            
+
             AABB leftAABB;
             if (leftType == INTERNAL_NODE)
             {
@@ -215,7 +216,7 @@ void BVHConstructor(uint3 id : SV_DispatchThreadID)
             {
                 rightAABB = triangleAABB[sortedTriangleIndices[rightId]];
             }
-            
+
             BVHData[parent] = MergeAABB(leftAABB, rightAABB);
 
             parent = internalNodes[parent].parent;

@@ -56,42 +56,16 @@ public class BVHConstructor : IDisposable
         _bvhShader.SetBuffer(_bvhConstructionKernel, "sortedTriangleIndices", _sortedTriangleIndices);
         _bvhShader.SetBuffer(_bvhConstructionKernel, "atomicsData", _atomics.DeviceBuffer);
         _bvhShader.SetBuffer(_bvhConstructionKernel, "BVHData", _bvhData);
-
-
-        // _internalNodes.GetData(internalNodes);
-        // _leafNodes.GetData(leafNodes);
-        //
-        // Debug.Log(Utils.ArrayToString(leafNodes));
-        // Debug.Log(Utils.ArrayToString(internalNodes));
     }
 
     public void ConstructTree()
     {
         _bvhShader.Dispatch(_treeConstructionKernel, Constants.BLOCK_SIZE, 1, 1);
-        
-        uint[] sortedTriangleIndices = new uint[_trianglesCount];
-        _sortedTriangleIndices.GetData(sortedTriangleIndices);
-        Debug.Log(Utils.ArrayToString(sortedTriangleIndices));
-
-        InternalNode[] internalNodes = new InternalNode[_trianglesCount - 1];
-        _internalNodes.GetData(internalNodes);
-        Debug.Log(Utils.ArrayToString(internalNodes));
-
-        LeafNode[] leafNodes = new LeafNode[_trianglesCount];
-        _leafNodes.GetData(leafNodes);
-        Debug.Log(Utils.ArrayToString(leafNodes));
     }
 
     public void ConstructBVH()
     {
         _bvhShader.Dispatch(_bvhConstructionKernel, Constants.BLOCK_SIZE, 1, 1);
-        
-        AABB[] aabbs = new AABB[_trianglesCount - 1];
-        _bvhData.GetData(aabbs);
-        Debug.Log(Utils.ArrayToString(aabbs));
-        
-        _atomics.GetData();
-        Debug.Log(Utils.ArrayToString(_atomics.LocalBuffer));
     }
 
     public void Dispose()

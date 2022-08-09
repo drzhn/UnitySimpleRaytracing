@@ -141,7 +141,7 @@ public class MeshBufferContainer : IDisposable
 
     private readonly int _trianglesLength;
 
-    private readonly DataBuffer<uint> _keysBuffer;
+    private readonly DataBuffer<uint> _keysBuffer; // TODO uint64, bc on large scenes we can have multiple triangles with the same morton code
     private readonly DataBuffer<uint> _triangleIndexBuffer;
     private readonly DataBuffer<Triangle> _triangleDataBuffer;
     private readonly DataBuffer<AABB> _triangleAABBBuffer;
