@@ -22,11 +22,17 @@ inline uint clz(uint v)
 
 inline int delta(int x, int y, int numObjects)
 {
+    
     if (x >= 0 && x <= numObjects - 1 && y >= 0 && y <= numObjects - 1)
     {
-        return clz(sortedMortonCodes[x] ^ sortedMortonCodes[y]);
+        const uint x_code = sortedMortonCodes[x];
+        const uint y_code = sortedMortonCodes[y];
+        if (x_code != y_code)
+        {
+            return clz(x_code ^ y_code);
+        }
+        return clz(x ^ y); // fallback for duplicating Morton codes
     }
-
     return -1;
 }
 

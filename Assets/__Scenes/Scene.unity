@@ -361,7 +361,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _objectDrawer: {fileID: 7200000, guid: bd902741a2aa2a14d95bccc622c77147, type: 3}
   _imageComposer: {fileID: 4800000, guid: 76cfc730dfa640c4ebed28afb85badb8, type: 3}
-  _mesh: {fileID: -2432090755550338912, guid: 18e33e97a38e97f4c8e2997452f6bc42, type: 3}
+  _mesh: {fileID: -1741188804007898148, guid: 65b494bcd976acb439826372cf3559b9, type: 3}
   _shaderContainer: {fileID: 2000843035}
 --- !u!1 &1613152079
 GameObject:
@@ -430,7 +430,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1613152079}
-  m_Mesh: {fileID: -2432090755550338912, guid: 18e33e97a38e97f4c8e2997452f6bc42, type: 3}
+  m_Mesh: {fileID: -1741188804007898148, guid: 65b494bcd976acb439826372cf3559b9, type: 3}
 --- !u!4 &1613152082
 Transform:
   m_ObjectHideFlags: 0

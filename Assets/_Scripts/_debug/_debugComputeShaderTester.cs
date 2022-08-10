@@ -11,11 +11,11 @@ public class _debugComputeShaderTester : MonoBehaviour
 
     private const int BUFFER_SIZE = 128;
     private ComputeBuffer _buffer;
-    private uint[] _bufferData = new uint[BUFFER_SIZE];
+    private ulong [] _bufferData = new ulong [BUFFER_SIZE];
 
     void Awake()
     {
-        _buffer = new ComputeBuffer(BUFFER_SIZE, sizeof(uint), ComputeBufferType.Structured);
+        _buffer = new ComputeBuffer(BUFFER_SIZE, sizeof(ulong), ComputeBufferType.Structured);
 
         _computeShaderKernel = _computeShader.FindKernel("CSMain");
         _computeShader.SetBuffer(_computeShaderKernel, "_buffer", _buffer);

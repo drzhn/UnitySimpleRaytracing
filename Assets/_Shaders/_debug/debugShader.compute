@@ -1,10 +1,12 @@
+#pragma use_dxc
 #pragma kernel CSMain
 
-RWStructuredBuffer<uint> _buffer; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+RWStructuredBuffer<uint64_t> _buffer; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 
 [numthreads(128,1,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+void CSMain(uint3 id : SV_DispatchThreadID)
 {
     const uint threadId = id.x;
-    _buffer[threadId] = firstbithigh(5);
+    const uint64_t a = 1<<33;
+    _buffer[threadId] = 63 - firstbithigh(a);
 }
