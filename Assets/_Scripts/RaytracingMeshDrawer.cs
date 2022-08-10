@@ -68,7 +68,7 @@ public class RaytracingMeshDrawer : MonoBehaviour
     private void DrawAABB(AABB aabb, float random = 1)
     {
         Vector3 center = (aabb.min + aabb.max) / 2;
-        Gizmos.DrawWireCube((aabb.min + aabb.max) / 2, (aabb.max - aabb.min)*random);
+        Gizmos.DrawWireCube((aabb.min + aabb.max) / 2, (aabb.max - aabb.min) * random);
     }
 
     private void OnDrawGizmos()
@@ -86,7 +86,7 @@ public class RaytracingMeshDrawer : MonoBehaviour
         for (int i = 0; i < _container.TrianglesLength - 1; i++)
         {
             AABB aabb = _container.BVHLocalData[i];
-            DrawAABB(aabb, 1.05f);// Random.Range(1, 1.1f));
+            DrawAABB(aabb, 1.05f); // Random.Range(1, 1.1f));
         }
     }
 
