@@ -359,7 +359,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9ee18e1658fd6b241864c6938e8f3dc7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _objectDrawer: {fileID: 7200000, guid: bd902741a2aa2a14d95bccc622c77147, type: 3}
   _imageComposer: {fileID: 4800000, guid: 76cfc730dfa640c4ebed28afb85badb8, type: 3}
   _mesh: {fileID: 4068373912626513877, guid: 72142b7b186115746bcf294a1d75f9d2, type: 3}
   _shaderContainer: {fileID: 2000843035}
@@ -527,6 +526,7 @@ MonoBehaviour:
     _globalRadixSortShader: {fileID: 7200000, guid: 1c47efd69e3337942ae5790d70241555, type: 3}
   _bvh:
     _BVHShader: {fileID: 7200000, guid: 6ff237d40748d0544bda3a2fe3327b0c, type: 3}
+  _raytracing: {fileID: 7200000, guid: bd902741a2aa2a14d95bccc622c77147, type: 3}
 --- !u!4 &2000843036
 Transform:
   m_ObjectHideFlags: 0

@@ -1,0 +1,21 @@
+#pragma kernel Raytracing
+
+#include <Assets/_Shaders/Constants.cginc>
+
+StructuredBuffer<uint> sortedTriangleIndices; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<AABB> triangleAABB; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<InternalNode> internalNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
+StructuredBuffer<LeafNode> leafNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<AABB> bvhData; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
+StructuredBuffer<Triangle> triangleData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+
+RWTexture2D<float4> _texture;
+
+uniform int screenWidth;
+uniform int screenHeight;
+
+[numthreads(32,32,1)]
+void Raytracing (uint3 id : SV_DispatchThreadID)
+{
+    _texture[id.xy] = float4(1,0,0,1);
+}

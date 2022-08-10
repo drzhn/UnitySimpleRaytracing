@@ -47,7 +47,7 @@ Shader "Hidden/ImageComposer"
                 fixed4 colObject = tex2D(_ObjectTexture, i.uv);
                 
                 // col.rgb = 1 - col.rgb;
-                return col;
+                return colObject;
             }
             ENDCG
         }

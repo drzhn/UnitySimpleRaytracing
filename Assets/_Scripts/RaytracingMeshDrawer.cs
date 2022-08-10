@@ -7,12 +7,11 @@ using Random = UnityEngine.Random;
 
 public class RaytracingMeshDrawer : MonoBehaviour
 {
-    [SerializeField] private ComputeShader _objectDrawer;
     [SerializeField] private Shader _imageComposer;
     [SerializeField] private Mesh _mesh;
     [SerializeField] private ShaderContainer _shaderContainer;
 
-
+    private ComputeShader _objectDrawer;
     private int _objectDrawerKernel;
 
     private MeshBufferContainer _container;
@@ -45,11 +44,18 @@ public class RaytracingMeshDrawer : MonoBehaviour
         _renderTexture = new RenderTexture(1024, 1024, GraphicsFormat.R16G16B16A16_SFloat, GraphicsFormat.D32_SFloat);
         _renderTexture.enableRandomWrite = true;
 
-        _objectDrawerKernel = _objectDrawer.FindKernel("ObjectDrawer");
+        _objectDrawer = _shaderContainer.Raytracing;
+        _objectDrawerKernel = _objectDrawer.FindKernel("Raytracing");
         _objectDrawer.SetInt("screenWidth", Screen.width);
         _objectDrawer.SetInt("screenHeight", Screen.height);
         _objectDrawer.SetTexture(_objectDrawerKernel, "_texture", _renderTexture);
-
+        _objectDrawer.SetBuffer(_objectDrawerKernel, "sortedTriangleIndices", _container.TriangleIndex);
+        _objectDrawer.SetBuffer(_objectDrawerKernel, "triangleAABB", _container.TriangleAABB);
+        _objectDrawer.SetBuffer(_objectDrawerKernel, "internalNodes", _container.BvhInternalNode);
+        _objectDrawer.SetBuffer(_objectDrawerKernel, "leafNodes", _container.BvhLeafNode);
+        _objectDrawer.SetBuffer(_objectDrawerKernel, "bvhData", _container.BvhData);
+        _objectDrawer.SetBuffer(_objectDrawerKernel, "triangleData", _container.TriangleData);
+        
         _imageComposerMaterial = new Material(_imageComposer);
         _imageComposerMaterial.SetTexture(ObjectTexture, _renderTexture);
     }

@@ -33,7 +33,9 @@ public class ShaderContainer : MonoBehaviour, IShaderContainer
 {
     public SortingShaderContainer Sorting => _sorting;
     public BVHShaderContainer BVH => _bvh;
+    public ComputeShader Raytracing => _raytracing;
 
     [SerializeField] private SortingShaderContainer _sorting;
     [SerializeField] private BVHShaderContainer _bvh;
+    [SerializeField] private ComputeShader _raytracing;
 }
