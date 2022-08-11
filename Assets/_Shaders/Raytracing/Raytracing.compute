@@ -1,5 +1,7 @@
 #pragma kernel Raytracing
 
+#include <UnityCG.cginc>
+#include <UnityShaderVariables.cginc>
 #include <Assets/_Shaders/Constants.cginc>
 
 StructuredBuffer<uint> sortedTriangleIndices; // size = THREADS_PER_BLOCK * BLOCK_SIZE
@@ -13,9 +15,61 @@ RWTexture2D<float4> _texture;
 
 uniform int screenWidth;
 uniform int screenHeight;
+uniform float cameraFov;
+
+float triangle_intersection(float3 orig,
+                            float3 dir,
+                            float3 v0,
+                            float3 v1,
+                            float3 v2)
+{
+    float3 e1 = v1 - v0;
+    float3 e2 = v2 - v0;
+
+    float3 pvec = cross(dir, e2);
+    float det = dot(e1, pvec);
+
+    if (det < 1e-8 && det > -1e-8)
+    {
+        return 0;
+    }
+
+    float inv_det = 1 / det;
+    float3 tvec = orig - v0;
+    float u = dot(tvec, pvec) * inv_det;
+    if (u < 0 || u > 1)
+    {
+        return 0;
+    }
+
+    float3 qvec = cross(tvec, e1);
+    float v = dot(dir, qvec) * inv_det;
+    if (v < 0 || u + v > 1)
+    {
+        return 0;
+    }
+    return dot(e2, qvec) * inv_det;
+}
 
 [numthreads(32,32,1)]
-void Raytracing (uint3 id : SV_DispatchThreadID)
+void Raytracing(uint3 id : SV_DispatchThreadID)
 {
-    _texture[id.xy] = float4(1,0,0,1);
+    const float near = _ProjectionParams.y;
+    const float fov = cameraFov;
+    const float height = 2 * near * fov;
+    const float width = screenWidth * height / screenHeight;
+
+    float3 v0 = mul(UNITY_MATRIX_V, float4(0, 0, 10, 1)).xyz; 
+    float3 v1 = mul(UNITY_MATRIX_V, float4(2, 0, 10, 1)).xyz; 
+    float3 v2 = mul(UNITY_MATRIX_V, float4(0, 1, 10, 1)).xyz; 
+
+    float3 origin = float3(0, 0, 0);
+    float3 dir = float3(
+        -width / 2 + width * id.x / screenWidth,
+        -height / 2 + height * id.y / screenHeight,
+        near
+    );
+
+    _texture[id.xy] = float4(1, 0, 0, saturate(triangle_intersection(origin, dir, v0, v1, v2)));
+    // _texture[id.xy] = float4(1, 0, 0, id.x > 273);
 }

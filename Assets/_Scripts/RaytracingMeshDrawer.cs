@@ -41,13 +41,15 @@ public class RaytracingMeshDrawer : MonoBehaviour
 
         _container.GetAllGpuData();
 
-        _renderTexture = new RenderTexture(1024, 1024, GraphicsFormat.R16G16B16A16_SFloat, GraphicsFormat.D32_SFloat);
+        _renderTexture = new RenderTexture(Screen.width, Screen.height, GraphicsFormat.R16G16B16A16_SFloat, GraphicsFormat.D32_SFloat);
         _renderTexture.enableRandomWrite = true;
 
         _objectDrawer = _shaderContainer.Raytracing;
         _objectDrawerKernel = _objectDrawer.FindKernel("Raytracing");
+
         _objectDrawer.SetInt("screenWidth", Screen.width);
         _objectDrawer.SetInt("screenHeight", Screen.height);
+        _objectDrawer.SetFloat("cameraFov", Mathf.Tan(Camera.main.fieldOfView * Mathf.Deg2Rad / 2));
         _objectDrawer.SetTexture(_objectDrawerKernel, "_texture", _renderTexture);
         _objectDrawer.SetBuffer(_objectDrawerKernel, "sortedTriangleIndices", _container.TriangleIndex);
         _objectDrawer.SetBuffer(_objectDrawerKernel, "triangleAABB", _container.TriangleAABB);
@@ -55,14 +57,14 @@ public class RaytracingMeshDrawer : MonoBehaviour
         _objectDrawer.SetBuffer(_objectDrawerKernel, "leafNodes", _container.BvhLeafNode);
         _objectDrawer.SetBuffer(_objectDrawerKernel, "bvhData", _container.BvhData);
         _objectDrawer.SetBuffer(_objectDrawerKernel, "triangleData", _container.TriangleData);
-        
+
         _imageComposerMaterial = new Material(_imageComposer);
         _imageComposerMaterial.SetTexture(ObjectTexture, _renderTexture);
     }
 
     private void Start()
     {
-        _objectDrawer.Dispatch(_objectDrawerKernel, 32, 32, 1);
+        _objectDrawer.Dispatch(_objectDrawerKernel, (Screen.width / 32) + 1, (Screen.height / 32) + 1, 1);
     }
 
     private void OnRenderImage(RenderTexture src, RenderTexture dest)
