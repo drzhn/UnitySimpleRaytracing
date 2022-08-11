@@ -50,6 +50,7 @@ public class RaytracingMeshDrawer : MonoBehaviour
         _objectDrawer.SetInt("screenWidth", Screen.width);
         _objectDrawer.SetInt("screenHeight", Screen.height);
         _objectDrawer.SetFloat("cameraFov", Mathf.Tan(Camera.main.fieldOfView * Mathf.Deg2Rad / 2));
+        _objectDrawer.SetMatrix("cameraToWorldMatrix", Camera.main.cameraToWorldMatrix);
         _objectDrawer.SetTexture(_objectDrawerKernel, "_texture", _renderTexture);
         _objectDrawer.SetBuffer(_objectDrawerKernel, "sortedTriangleIndices", _container.TriangleIndex);
         _objectDrawer.SetBuffer(_objectDrawerKernel, "triangleAABB", _container.TriangleAABB);

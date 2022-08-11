@@ -1,6 +1,6 @@
+#pragma use_dxc
 #pragma kernel Raytracing
 
-#include <UnityCG.cginc>
 #include <UnityShaderVariables.cginc>
 #include <Assets/_Shaders/Constants.cginc>
 
@@ -16,12 +16,22 @@ RWTexture2D<float4> _texture;
 uniform int screenWidth;
 uniform int screenHeight;
 uniform float cameraFov;
+uniform float4x4 cameraToWorldMatrix;
 
-float triangle_intersection(float3 orig,
-                            float3 dir,
-                            float3 v0,
-                            float3 v1,
-                            float3 v2)
+struct Ray
+{
+    float3 origin;
+    float3 dir;
+    float3 inv_dir;
+};
+
+struct RaycastResult
+{
+    float distance;
+    int hasResult;
+};
+
+float RayTriangleIntersection(float3 orig, float3 dir, float3 v0, float3 v1, float3 v2)
 {
     float3 e1 = v1 - v0;
     float3 e2 = v2 - v0;
@@ -51,6 +61,71 @@ float triangle_intersection(float3 orig,
     return dot(e2, qvec) * inv_det;
 }
 
+bool RayBoxIntersection(AABB b, Ray r)
+{
+    const float3 t1 = b.min - r.origin * r.inv_dir;
+    const float3 t2 = b.max - r.origin * r.inv_dir;
+
+    const float3 tmin1 = min(t1, t2);
+    const float3 tmax1 = max(t1, t2);
+
+    const float tmin = max(tmin1.x, max(tmin1.y, tmin1.z));
+    const float tmax = min(tmax1.x, min(tmax1.y, tmax1.z));
+
+    return tmax > tmin;
+}
+
+RaycastResult CheckTriangle(uint triangleIndex, Ray ray, RaycastResult currentResult)
+{
+    RaycastResult result = currentResult;
+
+    if (RayBoxIntersection(triangleAABB[triangleIndex], ray))
+    {
+        const Triangle t = triangleData[triangleIndex];
+        const float dist = RayTriangleIntersection(ray.origin, ray.dir, t.a, t.b, t.c);
+        if (dist != 0)
+        {
+            result.distance = min(result.distance, dist);
+            result.hasResult = 1;
+        }
+    }
+
+    return result;
+}
+
+RaycastResult CheckAABB(uint index, Ray ray, RaycastResult currentResult)
+{
+    RaycastResult result = currentResult;
+    if (!RayBoxIntersection(bvhData[index], ray))
+    {
+        return result;
+    }
+    const uint leftIndex = internalNodes[index].leftNode;
+    const uint leftType = internalNodes[index].leftNodeType;
+    if (leftType == INTERNAL_NODE)
+    {
+        result = CheckAABB(leftIndex, ray, result);
+    }
+    else
+    {
+        const uint triangleIndex = sortedTriangleIndices[leafNodes[leftIndex].index];
+        return CheckTriangle(triangleIndex, ray, currentResult);
+    }
+
+    const uint rightIndex = internalNodes[index].rightNode;
+    const uint rightType = internalNodes[index].rightNodeType;
+    if (rightType == INTERNAL_NODE)
+    {
+        result = CheckAABB(rightIndex, ray, result);
+    }
+    else
+    {
+        const uint triangleIndex = sortedTriangleIndices[leafNodes[rightIndex].index];
+        return CheckTriangle(triangleIndex, ray, currentResult);
+    }
+    return result;
+}
+
 [numthreads(32,32,1)]
 void Raytracing(uint3 id : SV_DispatchThreadID)
 {
@@ -59,17 +134,31 @@ void Raytracing(uint3 id : SV_DispatchThreadID)
     const float height = 2 * near * fov;
     const float width = screenWidth * height / screenHeight;
 
-    float3 v0 = mul(UNITY_MATRIX_V, float4(0, 0, 10, 1)).xyz; 
-    float3 v1 = mul(UNITY_MATRIX_V, float4(2, 0, 10, 1)).xyz; 
-    float3 v2 = mul(UNITY_MATRIX_V, float4(0, 1, 10, 1)).xyz; 
+    float3 v0 = float3(0, 0, 0);
+    float3 v1 = float3(2, 0, 0);
+    float3 v2 = float3(0, 1, 0);
 
     float3 origin = float3(0, 0, 0);
     float3 dir = float3(
         -width / 2 + width * id.x / screenWidth,
         -height / 2 + height * id.y / screenHeight,
-        near
+        -near
     );
 
-    _texture[id.xy] = float4(1, 0, 0, saturate(triangle_intersection(origin, dir, v0, v1, v2)));
-    // _texture[id.xy] = float4(1, 0, 0, id.x > 273);
+    origin = mul(cameraToWorldMatrix, float4(origin, 1)).xyz;
+    dir = mul(cameraToWorldMatrix, float4(dir, 0)).xyz;
+
+    Ray ray;
+    ray.origin = origin;
+    ray.dir = dir;
+    ray.inv_dir = 1 / dir;
+
+    RaycastResult result;
+    result.distance = 0x7F7FFFFF;
+    result.hasResult = 0;
+
+    result = CheckAABB(0, ray, result);
+
+    // _texture[id.xy] = float4(1, 0, 0, saturate(RayTriangleIntersection(origin, dir, v0, v1, v2)));
+    _texture[id.xy] = float4(1, 0, 0, result.hasResult);
 }

@@ -160,22 +160,20 @@ void TreeConstructor(uint3 id : SV_DispatchThreadID)
 
 inline AABB MergeAABB(AABB left, AABB right)
 {
-    const float3 aabbmin = float3(
+    AABB ret;
+    ret.min = float3(
         min(left.min.x, right.min.x),
         min(left.min.y, right.min.y),
         min(left.min.z, right.min.z)
     );
 
-    const float3 aabbmax = float3(
+    ret.max = float3(
         max(left.max.x, right.max.x),
         max(left.max.y, right.max.y),
         max(left.max.z, right.max.z)
     );
 
-    AABB ret;
-    ret.min = aabbmin;
     ret._dummy0 = 0;
-    ret.max = aabbmax;
     ret._dummy1 = 0;
     return ret;
 }
