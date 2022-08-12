@@ -13,6 +13,7 @@ StructuredBuffer<Triangle> triangleData; // size = THREADS_PER_BLOCK * BLOCK_SIZ
 
 RWTexture2D<float4> _texture;
 
+uniform int indexToCheck;
 uniform int screenWidth;
 uniform int screenHeight;
 uniform float cameraFov;
@@ -63,8 +64,8 @@ float RayTriangleIntersection(float3 orig, float3 dir, float3 v0, float3 v1, flo
 
 bool RayBoxIntersection(AABB b, Ray r)
 {
-    const float3 t1 = b.min - r.origin * r.inv_dir;
-    const float3 t2 = b.max - r.origin * r.inv_dir;
+    const float3 t1 = (b.min - r.origin) * r.inv_dir;
+    const float3 t2 = (b.max - r.origin) * r.inv_dir;
 
     const float3 tmin1 = min(t1, t2);
     const float3 tmax1 = max(t1, t2);
@@ -78,7 +79,6 @@ bool RayBoxIntersection(AABB b, Ray r)
 RaycastResult CheckTriangle(uint triangleIndex, Ray ray, RaycastResult currentResult)
 {
     RaycastResult result = currentResult;
-
     if (RayBoxIntersection(triangleAABB[triangleIndex], ray))
     {
         const Triangle t = triangleData[triangleIndex];
@@ -93,39 +93,6 @@ RaycastResult CheckTriangle(uint triangleIndex, Ray ray, RaycastResult currentRe
     return result;
 }
 
-RaycastResult CheckAABB(uint index, Ray ray, RaycastResult currentResult)
-{
-    RaycastResult result = currentResult;
-    if (!RayBoxIntersection(bvhData[index], ray))
-    {
-        return result;
-    }
-    const uint leftIndex = internalNodes[index].leftNode;
-    const uint leftType = internalNodes[index].leftNodeType;
-    if (leftType == INTERNAL_NODE)
-    {
-        result = CheckAABB(leftIndex, ray, result);
-    }
-    else
-    {
-        const uint triangleIndex = sortedTriangleIndices[leafNodes[leftIndex].index];
-        return CheckTriangle(triangleIndex, ray, currentResult);
-    }
-
-    const uint rightIndex = internalNodes[index].rightNode;
-    const uint rightType = internalNodes[index].rightNodeType;
-    if (rightType == INTERNAL_NODE)
-    {
-        result = CheckAABB(rightIndex, ray, result);
-    }
-    else
-    {
-        const uint triangleIndex = sortedTriangleIndices[leafNodes[rightIndex].index];
-        return CheckTriangle(triangleIndex, ray, currentResult);
-    }
-    return result;
-}
-
 [numthreads(32,32,1)]
 void Raytracing(uint3 id : SV_DispatchThreadID)
 {
@@ -134,9 +101,9 @@ void Raytracing(uint3 id : SV_DispatchThreadID)
     const float height = 2 * near * fov;
     const float width = screenWidth * height / screenHeight;
 
-    float3 v0 = float3(0, 0, 0);
-    float3 v1 = float3(2, 0, 0);
-    float3 v2 = float3(0, 1, 0);
+    // float3 v0 = float3(0, 0, 0);
+    // float3 v1 = float3(2, 0, 0);
+    // float3 v2 = float3(0, 1, 0);
 
     float3 origin = float3(0, 0, 0);
     float3 dir = float3(
@@ -157,7 +124,62 @@ void Raytracing(uint3 id : SV_DispatchThreadID)
     result.distance = 0x7F7FFFFF;
     result.hasResult = 0;
 
-    result = CheckAABB(0, ray, result);
+    // AABB test;
+    // test.min = float3(-1, -1, -1);
+    // test.max = float3(1, 1, 1);
+    // result.hasResult = RayBoxIntersection(test, ray) ? 1 : 0;
+
+
+    uint stack[64];
+    uint currentStackIndex = 0;
+    stack[currentStackIndex] = 0;
+    currentStackIndex = 1;
+
+    // _texture[id.xy] = float4(1, 0, 0, RayBoxIntersection(bvhData[indexToCheck], ray));
+    // // _texture[id.xy] = float4(1, 0, 0, RayBoxIntersection(triangleAABB[indexToCheck], ray));
+    // return;
+
+    while (currentStackIndex != 0)
+    {
+        currentStackIndex --;
+        const uint index = stack[currentStackIndex];
+
+        if (!RayBoxIntersection(bvhData[index], ray))
+        {
+            continue;
+        }
+
+        const uint leftIndex = internalNodes[index].leftNode;
+        const uint leftType = internalNodes[index].leftNodeType;
+
+        if (leftType == INTERNAL_NODE)
+        {
+            stack[currentStackIndex] = leftIndex;
+            currentStackIndex++;
+        }
+        else
+        {
+            const uint triangleIndex = sortedTriangleIndices[leafNodes[leftIndex].index];
+            result = CheckTriangle(triangleIndex, ray, result);
+            // result.hasResult = 1;
+        }
+
+        const uint rightIndex = internalNodes[index].rightNode;
+        const uint rightType = internalNodes[index].rightNodeType;
+
+
+        if (rightType == INTERNAL_NODE)
+        {
+            stack[currentStackIndex] = rightIndex;
+            currentStackIndex ++;
+        }
+        else
+        {
+            const uint triangleIndex = sortedTriangleIndices[leafNodes[rightIndex].index];
+            result = CheckTriangle(triangleIndex, ray, result);
+            // result.hasResult = 1;
+        }
+    }
 
     // _texture[id.xy] = float4(1, 0, 0, saturate(RayTriangleIntersection(origin, dir, v0, v1, v2)));
     _texture[id.xy] = float4(1, 0, 0, result.hasResult);

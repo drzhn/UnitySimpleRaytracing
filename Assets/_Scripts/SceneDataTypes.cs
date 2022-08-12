@@ -29,7 +29,7 @@ public struct Triangle
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 16)]
-struct InternalNode
+public struct InternalNode
 {
     public uint leftNode;
     public uint leftNodeType;
@@ -50,7 +50,7 @@ struct InternalNode
 };
 
 [StructLayout(LayoutKind.Sequential, Pack = 16)]
-struct LeafNode
+public struct LeafNode
 {
     public uint parent;
     public uint index;

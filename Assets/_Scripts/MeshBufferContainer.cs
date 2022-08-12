@@ -59,6 +59,16 @@ public class DataBuffer<T> : IDisposable where T : struct
         _synced = true;
     }
 
+    public override string ToString()
+    {
+        if (!_synced)
+        {
+            GetData();
+        }
+
+        return Utils.ArrayToString(_localBuffer).ToString();
+    }
+
     public void Dispose()
     {
         _deviceBuffer.Release();
@@ -70,8 +80,8 @@ public class MeshBufferContainer : IDisposable
     // TODO reduce scene data for finding AABB scene in runtime
     private static readonly AABB Whole = new AABB()
     {
-        min = new Vector3(-3, -3, -1),
-        max = new Vector3(3, 3, 1)
+        min = new Vector3(-5f, -5f, -5f),
+        max = new Vector3(5f, 5f, 5f)
     };
 
     public ComputeBuffer Keys => _keysBuffer.DeviceBuffer;
@@ -81,9 +91,11 @@ public class MeshBufferContainer : IDisposable
     public ComputeBuffer BvhData => _bvhDataBuffer.DeviceBuffer;
     public ComputeBuffer BvhLeafNode => _bvhLeafNodesBuffer.DeviceBuffer;
     public ComputeBuffer BvhInternalNode => _bvhInternalNodesBuffer.DeviceBuffer;
-    
+
     public AABB[] TriangleAABBLocalData => _triangleAABBBuffer.LocalBuffer;
     public AABB[] BVHLocalData => _bvhDataBuffer.LocalBuffer;
+    public LeafNode[] BvhLeafNodeLocalData => _bvhLeafNodesBuffer.LocalBuffer;
+    public InternalNode[] BvhInternalNodeLocalData => _bvhInternalNodesBuffer.LocalBuffer;
     public int TrianglesLength => _trianglesLength;
 
     private static uint ExpandBits(uint v)
@@ -109,14 +121,14 @@ public class MeshBufferContainer : IDisposable
     private static void GetCentroidAndAABB(Vector3 a, Vector3 b, Vector3 c, out Vector3 centroid, out AABB aabb)
     {
         Vector3 min = new Vector3(
-            Math.Min(Math.Min(a.x, b.x), c.x),
-            Math.Min(Math.Min(a.y, b.y), c.y),
-            Math.Min(Math.Min(a.z, b.z), c.z)
+            Math.Min(Math.Min(a.x, b.x), c.x)-0.001f,
+            Math.Min(Math.Min(a.y, b.y), c.y)-0.001f,
+            Math.Min(Math.Min(a.z, b.z), c.z)-0.001f
         );
         Vector3 max = new Vector3(
-            Math.Max(Math.Max(a.x, b.x), c.x),
-            Math.Max(Math.Max(a.y, b.y), c.y),
-            Math.Max(Math.Max(a.z, b.z), c.z)
+            Math.Max(Math.Max(a.x, b.x), c.x)+0.001f,
+            Math.Max(Math.Max(a.y, b.y), c.y)+0.001f,
+            Math.Max(Math.Max(a.z, b.z), c.z)+0.001f
         );
 
         centroid = (min + max) * 0.5f;
@@ -209,6 +221,12 @@ public class MeshBufferContainer : IDisposable
         _bvhDataBuffer.GetData();
         _bvhLeafNodesBuffer.GetData();
         _bvhInternalNodesBuffer.GetData();
+    }
+
+    public void PrintData()
+    {
+        Debug.Log(_bvhInternalNodesBuffer);
+        Debug.Log(_bvhLeafNodesBuffer);
     }
 
 

@@ -47,7 +47,7 @@ public class ComputeBufferSorter : IDisposable
         _localRadixSortShader = shaderContainer.Sorting.LocalRadixSortShader;
         _globalRadixSortShader = shaderContainer.Sorting.GlobalRadixSortShader;
         _scanShader = shaderContainer.Sorting.ScanShader;
-        
+
 
         _sortedBlocksKeysData = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
         _sortedBlocksValuesData = new ComputeBuffer(Constants.DATA_ARRAY_COUNT, sizeof(uint), ComputeBufferType.Structured);
@@ -84,9 +84,9 @@ public class ComputeBufferSorter : IDisposable
         _globalRadixSortShader.SetBuffer(_globalRadixKernel, "sortedValuesData", _values);
 
         // debug data
-        
+
         _keys.GetData(_unsortedLocalData);
-        
+
         for (uint i = 0; i < 256; i++)
         {
             _debugDataDictionary.Add(i, 0);
@@ -151,6 +151,12 @@ public class ComputeBufferSorter : IDisposable
             if (_sortedLocalData[i] < _sortedLocalData[i - 1])
             {
                 Debug.LogError("Output data has unsorted element on index " + i);
+                return;
+            }
+
+            if (_sortedLocalData[i] == _sortedLocalData[i - 1])
+            {
+                Debug.LogError("Output data has non-unique element on index " + i);
                 return;
             }
         }
