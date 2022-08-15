@@ -26,12 +26,6 @@ struct Ray
     float3 inv_dir;
 };
 
-struct RaycastResult
-{
-    float distance;
-    int hasResult;
-};
-
 float RayTriangleIntersection(float3 orig, float3 dir, float3 v0, float3 v1, float3 v2)
 {
     float3 e1 = v1 - v0;
@@ -42,7 +36,7 @@ float RayTriangleIntersection(float3 orig, float3 dir, float3 v0, float3 v1, flo
 
     if (det < 1e-8 && det > -1e-8)
     {
-        return 0;
+        return MAX_FLOAT;
     }
 
     float inv_det = 1 / det;
@@ -50,14 +44,14 @@ float RayTriangleIntersection(float3 orig, float3 dir, float3 v0, float3 v1, flo
     float u = dot(tvec, pvec) * inv_det;
     if (u < 0 || u > 1)
     {
-        return 0;
+        return MAX_FLOAT;
     }
 
     float3 qvec = cross(tvec, e1);
     float v = dot(dir, qvec) * inv_det;
     if (v < 0 || u + v > 1)
     {
-        return 0;
+        return MAX_FLOAT;
     }
     return dot(e2, qvec) * inv_det;
 }
@@ -76,21 +70,14 @@ bool RayBoxIntersection(AABB b, Ray r)
     return tmax > tmin;
 }
 
-RaycastResult CheckTriangle(uint triangleIndex, Ray ray, RaycastResult currentResult)
+float CheckTriangle(uint triangleIndex, Ray ray)
 {
-    RaycastResult result = currentResult;
     if (RayBoxIntersection(triangleAABB[triangleIndex], ray))
     {
         const Triangle t = triangleData[triangleIndex];
-        const float dist = RayTriangleIntersection(ray.origin, ray.dir, t.a, t.b, t.c);
-        if (dist != 0)
-        {
-            result.distance = min(result.distance, dist);
-            result.hasResult = 1;
-        }
+        return RayTriangleIntersection(ray.origin, ray.dir, t.a, t.b, t.c);
     }
-
-    return result;
+    return MAX_FLOAT;
 }
 
 [numthreads(32,32,1)]
@@ -100,10 +87,6 @@ void Raytracing(uint3 id : SV_DispatchThreadID)
     const float fov = cameraFov;
     const float height = 2 * near * fov;
     const float width = screenWidth * height / screenHeight;
-
-    // float3 v0 = float3(0, 0, 0);
-    // float3 v1 = float3(2, 0, 0);
-    // float3 v2 = float3(0, 1, 0);
 
     float3 origin = float3(0, 0, 0);
     float3 dir = float3(
@@ -120,24 +103,12 @@ void Raytracing(uint3 id : SV_DispatchThreadID)
     ray.dir = dir;
     ray.inv_dir = 1 / dir;
 
-    RaycastResult result;
-    result.distance = 0x7F7FFFFF;
-    result.hasResult = 0;
-
-    // AABB test;
-    // test.min = float3(-1, -1, -1);
-    // test.max = float3(1, 1, 1);
-    // result.hasResult = RayBoxIntersection(test, ray) ? 1 : 0;
-
+    float result = MAX_FLOAT;
 
     uint stack[64];
     uint currentStackIndex = 0;
     stack[currentStackIndex] = 0;
     currentStackIndex = 1;
-
-    // _texture[id.xy] = float4(1, 0, 0, RayBoxIntersection(bvhData[indexToCheck], ray));
-    // // _texture[id.xy] = float4(1, 0, 0, RayBoxIntersection(triangleAABB[indexToCheck], ray));
-    // return;
 
     while (currentStackIndex != 0)
     {
@@ -160,8 +131,7 @@ void Raytracing(uint3 id : SV_DispatchThreadID)
         else
         {
             const uint triangleIndex = sortedTriangleIndices[leafNodes[leftIndex].index];
-            result = CheckTriangle(triangleIndex, ray, result);
-            // result.hasResult = 1;
+            result = min(result, CheckTriangle(triangleIndex, ray));
         }
 
         const uint rightIndex = internalNodes[index].rightNode;
@@ -176,11 +146,8 @@ void Raytracing(uint3 id : SV_DispatchThreadID)
         else
         {
             const uint triangleIndex = sortedTriangleIndices[leafNodes[rightIndex].index];
-            result = CheckTriangle(triangleIndex, ray, result);
-            // result.hasResult = 1;
+            result = min(result,CheckTriangle(triangleIndex, ray));
         }
     }
-
-    // _texture[id.xy] = float4(1, 0, 0, saturate(RayTriangleIntersection(origin, dir, v0, v1, v2)));
-    _texture[id.xy] = float4(1, 0, 0, result.hasResult);
+    _texture[id.xy] = float4(1, 0, 0, result != MAX_FLOAT);
 }
