@@ -80,8 +80,8 @@ public class MeshBufferContainer : IDisposable
     // TODO reduce scene data for finding AABB scene in runtime
     private static readonly AABB Whole = new AABB()
     {
-        min = new Vector3(-5f, -5f, -5f),
-        max = new Vector3(5f, 5f, 5f)
+        min = new Vector3(-6f, -6f, -6f),
+        max = new Vector3(6f, 6f, 6f)
     };
 
     public ComputeBuffer Keys => _keysBuffer.DeviceBuffer;

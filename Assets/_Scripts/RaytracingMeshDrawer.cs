@@ -26,7 +26,7 @@ public class RaytracingMeshDrawer : MonoBehaviour
     void Awake()
     {
         _container = new MeshBufferContainer(_mesh);
-        _sorter = new ComputeBufferSorter(_container.Keys, _container.TriangleIndex, _shaderContainer);
+        _sorter = new ComputeBufferSorter(_container.TrianglesLength, _container.Keys, _container.TriangleIndex, _shaderContainer);
         _bvhConstructor = new BVHConstructor(_container.TrianglesLength,
             _container.Keys,
             _container.TriangleIndex,
@@ -39,11 +39,11 @@ public class RaytracingMeshDrawer : MonoBehaviour
         Debug.Log("Triangles Length " + _container.TrianglesLength);
 
         _sorter.Sort();
-        _bvhConstructor.ConstructTree();
-        _bvhConstructor.ConstructBVH();
-
-        _container.GetAllGpuData();
-        _container.PrintData();
+        // _bvhConstructor.ConstructTree();
+        // _bvhConstructor.ConstructBVH();
+        //
+        // _container.GetAllGpuData();
+        // _container.PrintData();
 
         _renderTexture = new RenderTexture(Screen.width, Screen.height, GraphicsFormat.R16G16B16A16_SFloat, GraphicsFormat.D32_SFloat);
         _renderTexture.enableRandomWrite = true;

@@ -38,11 +38,14 @@ public class ComputeBufferSorter : IDisposable
     private readonly uint[] _sizesPrefixSumLocalData = new uint[Constants.BLOCK_SIZE / (Constants.THREADS_PER_BLOCK / Constants.BUCKET_SIZE)];
 
     private readonly Dictionary<uint, int> _debugDataDictionary = new(256);
+    private readonly int _dataLength;
 
-    public ComputeBufferSorter(ComputeBuffer keys, ComputeBuffer values, IShaderContainer shaderContainer)
+    public ComputeBufferSorter(int dataLength, ComputeBuffer keys, ComputeBuffer values, IShaderContainer shaderContainer)
     {
         _keys = keys;
         _values = values;
+
+        _dataLength = dataLength;
 
         _localRadixSortShader = shaderContainer.Sorting.LocalRadixSortShader;
         _globalRadixSortShader = shaderContainer.Sorting.GlobalRadixSortShader;
@@ -103,7 +106,7 @@ public class ComputeBufferSorter : IDisposable
             _localRadixSortShader.Dispatch(_localRadixKernel, Constants.BLOCK_SIZE, 1, 1);
 
             _sizesData.GetData(_sizesLocalDataBeforeScan);
-            // Debug.Log("Sizes before scan: " + Utils.ArrayToString(_sizesLocalDataBeforeScan));
+            Debug.Log("Sizes before scan: " + Utils.ArrayToString(_sizesLocalDataBeforeScan));
 
             _scanShader.Dispatch(_preScanKernel, Constants.BLOCK_SIZE / (Constants.THREADS_PER_BLOCK / Constants.BUCKET_SIZE), 1, 1);
             _scanShader.Dispatch(_blockSumKernel, 1, 1, 1);
@@ -116,7 +119,7 @@ public class ComputeBufferSorter : IDisposable
         }
 
         GetSortedDataBack();
-        // PrintData();
+        PrintData();
 
         ValidateSortedData();
     }
@@ -146,7 +149,9 @@ public class ComputeBufferSorter : IDisposable
     void ValidateSortedData()
     {
         // does output sorted data actually sorted?
-        for (uint i = 1; i < Constants.DATA_ARRAY_COUNT; i++)
+        StringBuilder s = new StringBuilder("");
+        int countNonUniqueElements = 0;
+        for (uint i = 1; i < _dataLength; i++)
         {
             if (_sortedLocalData[i] < _sortedLocalData[i - 1])
             {
@@ -156,12 +161,17 @@ public class ComputeBufferSorter : IDisposable
 
             if (_sortedLocalData[i] == _sortedLocalData[i - 1])
             {
-                Debug.LogError("Output data has non-unique element on index " + i);
-                return;
+                s.Append($"{i}, ");
+                countNonUniqueElements++;
             }
         }
 
         Debug.Log("Output data is sorted");
+        if (countNonUniqueElements > 0)
+        {
+            s.Insert(0, $"Output data has {countNonUniqueElements} non-unique element on indices: ");
+            Debug.LogError(s.ToString());
+        }
     }
 
     uint GetRadix(uint value, int bitOffset)
