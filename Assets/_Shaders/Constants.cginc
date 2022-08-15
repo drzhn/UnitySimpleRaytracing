@@ -1,12 +1,10 @@
-// we will only process 512*1024 elements, 1024 elems per thread
-// #define TKey uint64_t
-#define TKey uint
-
 #define RADIX 8
 #define BUCKET_SIZE 256 // 2 ^ RADIX
 #define BLOCK_SIZE 512
 #define THREADS_PER_BLOCK 1024
 #define WARP_SIZE 32
+
+#define MAX_FLOAT 0x7F7FFFFF
 
 struct AABB
 {

@@ -3,13 +3,13 @@
 
 #include <Assets/_Shaders/Constants.cginc>
 
-StructuredBuffer<TKey> sortedBlocksKeysData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<uint> sortedBlocksKeysData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 StructuredBuffer<uint> sortedBlocksValuesData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 
 StructuredBuffer<uint> offsetsData; // size = BLOCK_SIZE * BUCKET_SIZE
 StructuredBuffer<uint> sizesData; // size = BLOCK_SIZE * BUCKET_SIZE
 
-RWStructuredBuffer<TKey> sortedKeysData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+RWStructuredBuffer<uint> sortedKeysData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 RWStructuredBuffer<uint> sortedValuesData; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 
 uniform int bitOffset;
@@ -23,7 +23,7 @@ void GlobalRadixSort(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     const uint threadId = tid.x;
     const uint groupId = gid.x;
 
-    const TKey key = sortedBlocksKeysData[groupId * THREADS_PER_BLOCK + threadId];
+    const uint key = sortedBlocksKeysData[groupId * THREADS_PER_BLOCK + threadId];
     const uint value = sortedBlocksValuesData[groupId * THREADS_PER_BLOCK + threadId];
     if (threadId < BUCKET_SIZE)
     {
@@ -32,7 +32,7 @@ void GlobalRadixSort(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     }
     AllMemoryBarrierWithGroupSync();
 
-    const TKey radix = (key >> bitOffset) & (BUCKET_SIZE - 1);
+    const uint radix = (key >> bitOffset) & (BUCKET_SIZE - 1);
     const uint indexOutput = sizesTile[radix] + threadId - offsetsTile[radix];
     
     sortedKeysData[indexOutput] = key;

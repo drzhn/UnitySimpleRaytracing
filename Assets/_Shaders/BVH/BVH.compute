@@ -15,9 +15,24 @@ RWStructuredBuffer<LeafNode> leafNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 RWStructuredBuffer<uint> atomicsData; // size = THREADS_PER_BLOCK * BLOCK_SIZE 
 RWStructuredBuffer<AABB> BVHData; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
 
-inline uint clz(uint v)
+inline uint clz(uint64_t v)
 {
-    return 31 - firstbithigh(v);
+    uint ret = 0;
+    for (int i = 63; i >= 0; i--)
+    {
+        if ((v >> i) & 1)
+        {
+            return ret;
+        }
+        ret++;
+    }
+    return ret;
+}
+
+inline uint64_t combine(uint a, uint b)
+{
+    uint64_t ret = a;
+    return (ret << 32) | b;
 }
 
 inline int delta(int x, int y, int numObjects)
@@ -26,11 +41,7 @@ inline int delta(int x, int y, int numObjects)
     {
         const uint x_code = sortedMortonCodes[x];
         const uint y_code = sortedMortonCodes[y];
-        // if (x_code != y_code)
-        // {
-            return clz(x_code ^ y_code);
-        // }
-        //return clz(x ^ y); // fallback for duplicating Morton codes
+        return clz(combine(x_code, x) ^ combine(y_code, y));
     }
     return -1;
 }
@@ -67,12 +78,12 @@ inline int FindSplit(int first, int last)
     // Calculate the number of highest bits that are the same
     // for all objects, using the count-leading-zeros intrinsic.
 
-    const int commonPrefix = clz(firstCode ^ lastCode);
+    const int commonPrefix = clz(combine(firstCode, first) ^ combine(lastCode, last));
 
     // Use binary search to find where the next bit differs.
     // Specifically, we are looking for the highest object that
     // shares more than commonPrefix bits with the first one.
-
+ 
     int split = first; // initial guess
     int step = last - first;
 
@@ -84,7 +95,7 @@ inline int FindSplit(int first, int last)
         if (newSplit < last)
         {
             const uint splitCode = sortedMortonCodes[newSplit];
-            const int splitPrefix = clz(firstCode ^ splitCode);
+            const int splitPrefix = clz(combine(firstCode, first) ^ combine(splitCode, newSplit));
             if (splitPrefix > commonPrefix)
                 split = newSplit; // accept proposal
         }
