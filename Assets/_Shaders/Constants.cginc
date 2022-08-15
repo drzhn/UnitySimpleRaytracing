@@ -1,4 +1,7 @@
 // we will only process 512*1024 elements, 1024 elems per thread
+// #define TKey uint64_t
+#define TKey uint
+
 #define RADIX 8
 #define BUCKET_SIZE 256 // 2 ^ RADIX
 #define BLOCK_SIZE 512

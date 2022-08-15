@@ -6,7 +6,7 @@
 
 uniform int trianglesCount;
 
-StructuredBuffer<uint> sortedMortonCodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<TKey> sortedMortonCodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 StructuredBuffer<uint> sortedTriangleIndices; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 StructuredBuffer<AABB> triangleAABB; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 
@@ -15,18 +15,17 @@ RWStructuredBuffer<LeafNode> leafNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 RWStructuredBuffer<uint> atomicsData; // size = THREADS_PER_BLOCK * BLOCK_SIZE 
 RWStructuredBuffer<AABB> BVHData; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
 
-inline uint clz(uint v)
+inline uint clz(TKey v)
 {
-    return 31 - firstbithigh(v);
+    return sizeof(TKey) * 8 - 1 - firstbithigh(v);
 }
 
 inline int delta(int x, int y, int numObjects)
 {
-    
     if (x >= 0 && x <= numObjects - 1 && y >= 0 && y <= numObjects - 1)
     {
-        const uint x_code = sortedMortonCodes[x];
-        const uint y_code = sortedMortonCodes[y];
+        const TKey x_code = sortedMortonCodes[x];
+        const TKey y_code = sortedMortonCodes[y];
         if (x_code != y_code)
         {
             return clz(x_code ^ y_code);
@@ -59,8 +58,8 @@ inline int FindSplit(int first, int last)
 {
     // Identical Morton codes => split the range in the middle.
 
-    const uint firstCode = sortedMortonCodes[first];
-    const uint lastCode = sortedMortonCodes[last];
+    const TKey firstCode = sortedMortonCodes[first];
+    const TKey lastCode = sortedMortonCodes[last];
 
     if (firstCode == lastCode)
         return (first + last) >> 1;
@@ -80,11 +79,11 @@ inline int FindSplit(int first, int last)
     do
     {
         step = (step + 1) >> 1; // exponential decrease
-        int newSplit = split + step; // proposed new position
+        const int newSplit = split + step; // proposed new position
 
         if (newSplit < last)
         {
-            const uint splitCode = sortedMortonCodes[newSplit];
+            const TKey splitCode = sortedMortonCodes[newSplit];
             const int splitPrefix = clz(firstCode ^ splitCode);
             if (splitPrefix > commonPrefix)
                 split = newSplit; // accept proposal

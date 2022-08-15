@@ -39,11 +39,12 @@ public class RaytracingMeshDrawer : MonoBehaviour
         Debug.Log("Triangles Length " + _container.TrianglesLength);
 
         _sorter.Sort();
+        
         // _bvhConstructor.ConstructTree();
         // _bvhConstructor.ConstructBVH();
-        //
-        // _container.GetAllGpuData();
-        // _container.PrintData();
+        
+        _container.GetAllGpuData();
+        _container.PrintData();
 
         _renderTexture = new RenderTexture(Screen.width, Screen.height, GraphicsFormat.R16G16B16A16_SFloat, GraphicsFormat.D32_SFloat);
         _renderTexture.enableRandomWrite = true;
@@ -183,12 +184,12 @@ public class RaytracingMeshDrawer : MonoBehaviour
 
         Gizmos.color = Color.red;
         
-        // for (int i = 0; i < _container.TrianglesLength - 1; i++)
-        // {
-        //     AABB aabb = _container.BVHLocalData[i];
-        //     DrawAABB(aabb, 1.05f); // Random.Range(1, 1.1f));
-        // }
-        DrawAABB(_container.BVHLocalData[0], 1.05f); // Random.Range(1, 1.1f));
+        for (int i = 0; i < _container.TrianglesLength - 1; i++)
+        {
+            AABB aabb = _container.BVHLocalData[i];
+            DrawAABB(aabb, 1.05f); // Random.Range(1, 1.1f));
+        }
+        // DrawAABB(_container.BVHLocalData[0], 1.05f); // Random.Range(1, 1.1f));
     }
 
     private void OnDestroy()

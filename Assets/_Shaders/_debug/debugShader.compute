@@ -8,5 +8,5 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 {
     const uint threadId = id.x;
     const uint64_t a = 1<<33;
-    _buffer[threadId] = 63 - firstbithigh(a);
+    _buffer[threadId] = sizeof(uint64_t);//63 - firstbithigh(a);
 }
