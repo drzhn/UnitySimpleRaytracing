@@ -65,7 +65,7 @@ void LocalRadixSort(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     {
         uint predResult = 0;
 
-        const uint key = sortTile[threadId];
+        const TKey key = sortTile[threadId];
         const uint value =valuesTile[threadId];
 
         const bool pred = (key >> shift) & 1;

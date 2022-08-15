@@ -6,8 +6,8 @@
 
 uniform int trianglesCount;
 
-StructuredBuffer<TKey> sortedMortonCodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
-StructuredBuffer<uint> sortedTriangleIndices; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<uint> sortedMortonCodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
+StructuredBuffer<uint> sortedTriangleIndices; // size = THREADS_PER_BLOCK * BLOCK_SIZE````
 StructuredBuffer<AABB> triangleAABB; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 
 RWStructuredBuffer<InternalNode> internalNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
@@ -15,22 +15,22 @@ RWStructuredBuffer<LeafNode> leafNodes; // size = THREADS_PER_BLOCK * BLOCK_SIZE
 RWStructuredBuffer<uint> atomicsData; // size = THREADS_PER_BLOCK * BLOCK_SIZE 
 RWStructuredBuffer<AABB> BVHData; // size = THREADS_PER_BLOCK * BLOCK_SIZE - 1
 
-inline uint clz(TKey v)
+inline uint clz(uint v)
 {
-    return sizeof(TKey) * 8 - 1 - firstbithigh(v);
+    return 31 - firstbithigh(v);
 }
 
 inline int delta(int x, int y, int numObjects)
 {
     if (x >= 0 && x <= numObjects - 1 && y >= 0 && y <= numObjects - 1)
     {
-        const TKey x_code = sortedMortonCodes[x];
-        const TKey y_code = sortedMortonCodes[y];
-        if (x_code != y_code)
-        {
+        const uint x_code = sortedMortonCodes[x];
+        const uint y_code = sortedMortonCodes[y];
+        // if (x_code != y_code)
+        // {
             return clz(x_code ^ y_code);
-        }
-        return clz(x ^ y); // fallback for duplicating Morton codes
+        // }
+        //return clz(x ^ y); // fallback for duplicating Morton codes
     }
     return -1;
 }
@@ -58,8 +58,8 @@ inline int FindSplit(int first, int last)
 {
     // Identical Morton codes => split the range in the middle.
 
-    const TKey firstCode = sortedMortonCodes[first];
-    const TKey lastCode = sortedMortonCodes[last];
+    const uint firstCode = sortedMortonCodes[first];
+    const uint lastCode = sortedMortonCodes[last];
 
     if (firstCode == lastCode)
         return (first + last) >> 1;
@@ -83,7 +83,7 @@ inline int FindSplit(int first, int last)
 
         if (newSplit < last)
         {
-            const TKey splitCode = sortedMortonCodes[newSplit];
+            const uint splitCode = sortedMortonCodes[newSplit];
             const int splitPrefix = clz(firstCode ^ splitCode);
             if (splitPrefix > commonPrefix)
                 split = newSplit; // accept proposal

@@ -32,7 +32,7 @@ void GlobalRadixSort(uint3 tid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     }
     AllMemoryBarrierWithGroupSync();
 
-    const uint radix = (key >> bitOffset) & (BUCKET_SIZE - 1);
+    const TKey radix = (key >> bitOffset) & (BUCKET_SIZE - 1);
     const uint indexOutput = sizesTile[radix] + threadId - offsetsTile[radix];
     
     sortedKeysData[indexOutput] = key;
