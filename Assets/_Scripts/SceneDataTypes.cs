@@ -8,7 +8,7 @@ public struct AABB
     public float _dummy0;
     public Vector3 max;
     public float _dummy1;
-    
+
     public override string ToString()
     {
         return $"min:{min}, max:{max}";
@@ -19,13 +19,25 @@ public struct AABB
 public struct Triangle
 {
     public Vector3 a;
-    public float _dummy0;
+    float _dummy0;
     public Vector3 b;
-    public float _dummy1;
+    float _dummy1;
     public Vector3 c;
-    public float _dummy2;
+    float _dummy2;
+    public Vector2 a_uv;
+    public Vector2 b_uv;
+    public Vector2 c_uv;
+    Vector2 _dummy3;
 
-    // TODO uv, texture index, etc
+    public Vector3 a_normal;
+    float _dummy4;
+    public Vector3 b_normal;
+    float _dummy5;
+    public Vector3 c_normal;
+    float _dummy6;
+    
+    
+    // TODO texture index, etc
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 16)]

@@ -41,4 +41,14 @@ struct Triangle
     float _dummy1;
     float3 c;
     float _dummy2;
+    float2 a_uv;
+    float2 b_uv;
+    float2 c_uv;
+    float2 _dummy3;
+    float3 a_normal;
+    float _dummy4;
+    float3 b_normal;
+    float _dummy5;
+    float3 c_normal;
+    float _dummy6;
 };

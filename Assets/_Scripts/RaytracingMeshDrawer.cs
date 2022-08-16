@@ -5,15 +5,19 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using Random = UnityEngine.Random;
 
+[RequireComponent(typeof(Camera))]
 public class RaytracingMeshDrawer : MonoBehaviour
 {
     [SerializeField] [Range(0, 6365)] private int _indexToCheck;
     [SerializeField] private Shader _imageComposer;
     [SerializeField] private Mesh _mesh;
     [SerializeField] private ShaderContainer _shaderContainer;
+    [SerializeField] private Texture _meshTexture;
 
     private ComputeShader _objectDrawer;
     private int _objectDrawerKernel;
+
+    private Camera _camera;
 
     private MeshBufferContainer _container;
     private ComputeBufferSorter<uint, uint> _sorter;
@@ -25,6 +29,8 @@ public class RaytracingMeshDrawer : MonoBehaviour
 
     void Awake()
     {
+        _camera = GetComponent<Camera>();
+        
         _container = new MeshBufferContainer(_mesh);
         _sorter = new ComputeBufferSorter<uint, uint>(_container.TrianglesLength, _container.Keys, _container.TriangleIndex, _shaderContainer);
         _bvhConstructor = new BVHConstructor(_container.TrianglesLength,
@@ -52,11 +58,9 @@ public class RaytracingMeshDrawer : MonoBehaviour
         _objectDrawer = _shaderContainer.Raytracing;
         _objectDrawerKernel = _objectDrawer.FindKernel("Raytracing");
 
-        _objectDrawer.SetInt("screenWidth", Screen.width);
-        _objectDrawer.SetInt("screenHeight", Screen.height);
-        _objectDrawer.SetFloat("cameraFov", Mathf.Tan(Camera.main.fieldOfView * Mathf.Deg2Rad / 2));
-        _objectDrawer.SetMatrix("cameraToWorldMatrix", Camera.main.cameraToWorldMatrix);
-        _objectDrawer.SetTexture(_objectDrawerKernel, "_texture", _renderTexture);
+
+        _objectDrawer.SetTexture(_objectDrawerKernel, "_outputTexture", _renderTexture);
+        _objectDrawer.SetTexture(_objectDrawerKernel, "_meshTexture", _meshTexture);
         _objectDrawer.SetBuffer(_objectDrawerKernel, "sortedTriangleIndices", _container.TriangleIndex);
         _objectDrawer.SetBuffer(_objectDrawerKernel, "triangleAABB", _container.TriangleAABB);
         _objectDrawer.SetBuffer(_objectDrawerKernel, "internalNodes", _container.BvhInternalNode);
@@ -70,7 +74,11 @@ public class RaytracingMeshDrawer : MonoBehaviour
 
     private void Update()
     {
-        _objectDrawer.SetInt("indexToCheck", _indexToCheck);
+        _objectDrawer.SetInt("screenWidth", Screen.width);
+        _objectDrawer.SetInt("screenHeight", Screen.height);
+        _objectDrawer.SetFloat("cameraFov", Mathf.Tan(_camera.fieldOfView * Mathf.Deg2Rad / 2));
+        _objectDrawer.SetMatrix("cameraToWorldMatrix", _camera.cameraToWorldMatrix);
+        
         _objectDrawer.Dispatch(_objectDrawerKernel, (Screen.width / 32) + 1, (Screen.height / 32) + 1, 1);
     }
 

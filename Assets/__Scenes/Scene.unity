@@ -363,6 +363,7 @@ MonoBehaviour:
   _imageComposer: {fileID: 4800000, guid: 76cfc730dfa640c4ebed28afb85badb8, type: 3}
   _mesh: {fileID: 2540817853737639666, guid: 328bfe7101428304d87e0a579a0d20fa, type: 3}
   _shaderContainer: {fileID: 2000843035}
+  _meshTexture: {fileID: 2800000, guid: b80fd47413dfb4945b9abc5905c53fbc, type: 3}
 --- !u!1 &1230734815
 GameObject:
   m_ObjectHideFlags: 0

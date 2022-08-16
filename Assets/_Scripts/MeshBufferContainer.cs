@@ -48,14 +48,14 @@ public class MeshBufferContainer : IDisposable
     private static void GetCentroidAndAABB(Vector3 a, Vector3 b, Vector3 c, out Vector3 centroid, out AABB aabb)
     {
         Vector3 min = new Vector3(
-            Math.Min(Math.Min(a.x, b.x), c.x)-0.001f,
-            Math.Min(Math.Min(a.y, b.y), c.y)-0.001f,
-            Math.Min(Math.Min(a.z, b.z), c.z)-0.001f
+            Math.Min(Math.Min(a.x, b.x), c.x) - 0.001f,
+            Math.Min(Math.Min(a.y, b.y), c.y) - 0.001f,
+            Math.Min(Math.Min(a.z, b.z), c.z) - 0.001f
         );
         Vector3 max = new Vector3(
-            Math.Max(Math.Max(a.x, b.x), c.x)+0.001f,
-            Math.Max(Math.Max(a.y, b.y), c.y)+0.001f,
-            Math.Max(Math.Max(a.z, b.z), c.z)+0.001f
+            Math.Max(Math.Max(a.x, b.x), c.x) + 0.001f,
+            Math.Max(Math.Max(a.y, b.y), c.y) + 0.001f,
+            Math.Max(Math.Max(a.z, b.z), c.z) + 0.001f
         );
 
         centroid = (min + max) * 0.5f;
@@ -91,9 +91,9 @@ public class MeshBufferContainer : IDisposable
 
     public MeshBufferContainer(Mesh mesh) // TODO multiple meshes
     {
-        if (Marshal.SizeOf(typeof(Triangle)) != 48)
+        if (Marshal.SizeOf(typeof(Triangle)) != 80)
         {
-            Debug.LogError("Triangle struct size = " + Marshal.SizeOf(typeof(Triangle)) + ", not 48");
+            Debug.LogError("Triangle struct size = " + Marshal.SizeOf(typeof(Triangle)) + ", not 80");
         }
 
         if (Marshal.SizeOf(typeof(AABB)) != 32)
@@ -112,6 +112,8 @@ public class MeshBufferContainer : IDisposable
 
         Vector3[] vertices = mesh.vertices;
         int[] triangles = mesh.triangles;
+        Vector2[] uvs = mesh.uv;
+        Vector3[] normals = mesh.normals;
         _trianglesLength = triangles.Length / 3;
 
         for (uint i = 0; i < _trianglesLength; i++)
@@ -128,7 +130,13 @@ public class MeshBufferContainer : IDisposable
             {
                 a = a,
                 b = b,
-                c = c
+                c = c,
+                a_uv = uvs[triangles[i * 3 + 0]],
+                b_uv = uvs[triangles[i * 3 + 1]],
+                c_uv = uvs[triangles[i * 3 + 2]],
+                a_normal = normals[triangles[i * 3 + 0]],
+                b_normal = normals[triangles[i * 3 + 1]],
+                c_normal = normals[triangles[i * 3 + 2]],
             };
             _triangleAABBBuffer[i] = aabb;
         }
