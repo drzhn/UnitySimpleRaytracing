@@ -172,7 +172,7 @@ public class ComputeBufferSorter<TKey, TValue> : IDisposable where TKey: struct,
         if (countNonUniqueElements > 0)
         {
             s.Insert(0, $"Output data has {countNonUniqueElements} non-unique element on indices: ");
-            Debug.LogError(s.ToString());
+            Debug.Log(s.ToString());
         }
     }
 

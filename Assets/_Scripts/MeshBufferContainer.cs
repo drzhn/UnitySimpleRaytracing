@@ -91,9 +91,9 @@ public class MeshBufferContainer : IDisposable
 
     public MeshBufferContainer(Mesh mesh) // TODO multiple meshes
     {
-        if (Marshal.SizeOf(typeof(Triangle)) != 80)
+        if (Marshal.SizeOf(typeof(Triangle)) != 128)
         {
-            Debug.LogError("Triangle struct size = " + Marshal.SizeOf(typeof(Triangle)) + ", not 80");
+            Debug.LogError("Triangle struct size = " + Marshal.SizeOf(typeof(Triangle)) + ", not 128");
         }
 
         if (Marshal.SizeOf(typeof(AABB)) != 32)
