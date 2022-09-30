@@ -41,7 +41,7 @@ public class _debugRayBoxIntersectionTester : MonoBehaviour
         float tmin = Mathf.Max(tmin1.x, tmin1.y, tmin1.z);
         float tmax = Mathf.Min(tmax1.x, tmax1.y, tmax1.z);
 
-        return tmax > tmin;
+        return tmax > tmin && tmax > 0;
     }
 
     void Update()

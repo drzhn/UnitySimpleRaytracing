@@ -83,7 +83,7 @@ bool RayBoxIntersection(AABB b, Ray r)
     const float tmin = max(tmin1.x, max(tmin1.y, tmin1.z));
     const float tmax = min(tmax1.x, min(tmax1.y, tmax1.z));
 
-    return tmax > tmin;
+    return tmax > tmin && tmax > 0;
 }
 
 RaycastResult CheckTriangle(uint triangleIndex, Ray ray, RaycastResult result)

@@ -5,10 +5,13 @@ using UnityEngine;
 public class MeshBufferContainer : IDisposable
 {
     // TODO reduce scene data for finding AABB scene in runtime
+
+    private static readonly float size = 15f;
+
     private static readonly AABB Whole = new AABB()
     {
-        min = new Vector3(-6f, -6f, -6f),
-        max = new Vector3(6f, 6f, 6f)
+        min = Vector3.one * -1 * size,
+        max = Vector3.one * size
     };
 
     public ComputeBuffer Keys => _keysBuffer.DeviceBuffer;
@@ -48,14 +51,14 @@ public class MeshBufferContainer : IDisposable
     private static void GetCentroidAndAABB(Vector3 a, Vector3 b, Vector3 c, out Vector3 centroid, out AABB aabb)
     {
         Vector3 min = new Vector3(
-            Math.Min(Math.Min(a.x, b.x), c.x) - 0.001f,
-            Math.Min(Math.Min(a.y, b.y), c.y) - 0.001f,
-            Math.Min(Math.Min(a.z, b.z), c.z) - 0.001f
+            Math.Min(Math.Min(a.x, b.x), c.x),
+            Math.Min(Math.Min(a.y, b.y), c.y),
+            Math.Min(Math.Min(a.z, b.z), c.z)
         );
         Vector3 max = new Vector3(
-            Math.Max(Math.Max(a.x, b.x), c.x) + 0.001f,
-            Math.Max(Math.Max(a.y, b.y), c.y) + 0.001f,
-            Math.Max(Math.Max(a.z, b.z), c.z) + 0.001f
+            Math.Max(Math.Max(a.x, b.x), c.x),
+            Math.Max(Math.Max(a.y, b.y), c.y),
+            Math.Max(Math.Max(a.z, b.z), c.z)
         );
 
         centroid = (min + max) * 0.5f;
@@ -107,8 +110,8 @@ public class MeshBufferContainer : IDisposable
         _triangleAABBBuffer = new DataBuffer<AABB>(Constants.DATA_ARRAY_COUNT);
 
         _bvhDataBuffer = new DataBuffer<AABB>(Constants.DATA_ARRAY_COUNT);
-        _bvhLeafNodesBuffer = new DataBuffer<LeafNode>(Constants.DATA_ARRAY_COUNT);
-        _bvhInternalNodesBuffer = new DataBuffer<InternalNode>(Constants.DATA_ARRAY_COUNT);
+        _bvhLeafNodesBuffer = new DataBuffer<LeafNode>(Constants.DATA_ARRAY_COUNT, LeafNode.NullLeaf);
+        _bvhInternalNodesBuffer = new DataBuffer<InternalNode>(Constants.DATA_ARRAY_COUNT, InternalNode.NullLeaf);
 
         Vector3[] vertices = mesh.vertices;
         int[] triangles = mesh.triangles;
@@ -156,12 +159,30 @@ public class MeshBufferContainer : IDisposable
         _bvhDataBuffer.GetData();
         _bvhLeafNodesBuffer.GetData();
         _bvhInternalNodesBuffer.GetData();
+
+        for (uint i = 0; i < _trianglesLength; i++)
+        {
+            if (_bvhLeafNodesBuffer[i].index == 0xFFFFFFFF && _bvhLeafNodesBuffer[i].parent == 0xFFFFFFFF)
+            {
+                Debug.LogErrorFormat("LEAF CORRUPTED {0}", i);
+            }
+        }
+
+        for (uint i = 0; i < _trianglesLength-1; i++)
+        {
+            if (_bvhInternalNodesBuffer[i].index == 0xFFFFFFFF && _bvhInternalNodesBuffer[i].parent == 0xFFFFFFFF)
+            {
+                Debug.LogErrorFormat("INTERNAL CORRUPTED {0}", i);
+
+            }
+        }
     }
 
     public void PrintData()
     {
         Debug.Log(_bvhInternalNodesBuffer);
         Debug.Log(_bvhLeafNodesBuffer);
+        Debug.Log(_bvhDataBuffer);
     }
 
 

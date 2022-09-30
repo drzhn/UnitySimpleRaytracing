@@ -59,6 +59,16 @@ public struct InternalNode
 
         return $"index:{index}, left:{leftNode} {GetNodeType(leftNodeType)}, right:{rightNode} {GetNodeType(rightNodeType)}, parent:{parent}\n";
     }
+    
+    public static InternalNode NullLeaf = new InternalNode()
+    {
+        leftNode = 0xFFFFFFFF,
+        leftNodeType = 0xFFFFFFFF,
+        rightNode = 0xFFFFFFFF,
+        rightNodeType = 0xFFFFFFFF,
+        parent = 0xFFFFFFFF,
+        index = 0xFFFFFFFF
+    };
 };
 
 [StructLayout(LayoutKind.Sequential, Pack = 16)]
@@ -71,4 +81,10 @@ public struct LeafNode
     {
         return $"index:{index}, parent:{parent}\n";
     }
+
+    public static LeafNode NullLeaf = new LeafNode()
+    {
+        parent = 0xFFFFFFFF,
+        index = 0xFFFFFFFF
+    };
 };
