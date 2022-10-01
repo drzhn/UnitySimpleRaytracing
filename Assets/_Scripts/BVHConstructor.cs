@@ -19,10 +19,10 @@ public class BVHConstructor : IDisposable
     private readonly int _treeConstructionKernel;
     private readonly int _bvhConstructionKernel;
 
-    private readonly int _trianglesCount;
+    private readonly uint _trianglesCount;
 
     public BVHConstructor(
-        int trianglesCount,
+        uint trianglesCount,
         ComputeBuffer sortedMortonCodes,
         ComputeBuffer sortedTriangleIndices,
         ComputeBuffer triangleAABB,
@@ -45,7 +45,7 @@ public class BVHConstructor : IDisposable
         _treeConstructionKernel = _bvhShader.FindKernel("TreeConstructor");
         _bvhConstructionKernel = _bvhShader.FindKernel("BVHConstructor");
 
-        _bvhShader.SetInt("trianglesCount", trianglesCount);
+        _bvhShader.SetInt("trianglesCount", (int)trianglesCount);
         _bvhShader.SetBuffer(_treeConstructionKernel, "sortedMortonCodes", _sortedMortonCodes);
         _bvhShader.SetBuffer(_treeConstructionKernel, "internalNodes", _internalNodes);
         _bvhShader.SetBuffer(_treeConstructionKernel, "leafNodes", _leafNodes);

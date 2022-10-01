@@ -30,21 +30,33 @@ public class RaytracingMeshDrawer : MonoBehaviour
     void Awake()
     {
         _camera = GetComponent<Camera>();
-        
+
         _container = new MeshBufferContainer(_mesh);
+        Debug.Log("Triangles Length " + _container.TrianglesLength);
         _sorter = new ComputeBufferSorter<uint, uint>(_container.TrianglesLength, _container.Keys, _container.TriangleIndex, _shaderContainer);
+        _sorter.Sort();
+        
+        _container.GetKeys();
+        
+        var newKeysBuffer = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, uint.MaxValue);
+        uint currentValue = 0;
+        newKeysBuffer[0] = currentValue;
+        for (uint i = 1; i < _container.TrianglesLength; i++)
+        {
+            currentValue += Math.Max(_container.KeysData[i] - _container.KeysData[i - 1], 1);
+            newKeysBuffer[i] = currentValue;
+        }
+
+        newKeysBuffer.Sync();
         _bvhConstructor = new BVHConstructor(_container.TrianglesLength,
-            _container.Keys,
+            newKeysBuffer.DeviceBuffer,
+            // _container.Keys,
             _container.TriangleIndex,
             _container.TriangleAABB,
             _container.BvhInternalNode,
             _container.BvhLeafNode,
             _container.BvhData,
             _shaderContainer);
-
-        Debug.Log("Triangles Length " + _container.TrianglesLength);
-
-        _sorter.Sort();
 
         _bvhConstructor.ConstructTree();
         _bvhConstructor.ConstructBVH();
@@ -70,6 +82,8 @@ public class RaytracingMeshDrawer : MonoBehaviour
 
         _imageComposerMaterial = new Material(_imageComposer);
         _imageComposerMaterial.SetTexture(ObjectTexture, _renderTexture);
+
+        newKeysBuffer.Dispose();
     }
 
     private void Update()
@@ -78,7 +92,7 @@ public class RaytracingMeshDrawer : MonoBehaviour
         _objectDrawer.SetInt("screenHeight", Screen.height);
         _objectDrawer.SetFloat("cameraFov", Mathf.Tan(_camera.fieldOfView * Mathf.Deg2Rad / 2));
         _objectDrawer.SetMatrix("cameraToWorldMatrix", _camera.cameraToWorldMatrix);
-        
+
         _objectDrawer.Dispatch(_objectDrawerKernel, (Screen.width / 32) + 1, (Screen.height / 32) + 1, 1);
     }
 
@@ -109,7 +123,7 @@ public class RaytracingMeshDrawer : MonoBehaviour
         for (int i = 0; i < _container.TrianglesLength - 1; i++)
         {
             AABB aabb = _container.BVHLocalData[i];
-            DrawAABB(aabb, 1); // Random.Range(1, 1.1f));
+            DrawAABB(aabb, 1.2f); // Random.Range(1, 1.1f));
         }
         // DrawAABB(_container.BVHLocalData[0], 1.05f); // Random.Range(1, 1.1f));
     }

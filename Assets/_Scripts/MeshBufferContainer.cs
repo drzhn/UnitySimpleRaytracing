@@ -6,7 +6,7 @@ public class MeshBufferContainer : IDisposable
 {
     // TODO reduce scene data for finding AABB scene in runtime
 
-    private static readonly float size = 15f;
+    private static readonly float size = 125f;
 
     private static readonly AABB Whole = new AABB()
     {
@@ -15,6 +15,7 @@ public class MeshBufferContainer : IDisposable
     };
 
     public ComputeBuffer Keys => _keysBuffer.DeviceBuffer;
+    public uint[] KeysData => _keysBuffer.LocalBuffer;
     public ComputeBuffer TriangleIndex => _triangleIndexBuffer.DeviceBuffer;
     public ComputeBuffer TriangleData => _triangleDataBuffer.DeviceBuffer;
     public ComputeBuffer TriangleAABB => _triangleAABBBuffer.DeviceBuffer;
@@ -26,7 +27,7 @@ public class MeshBufferContainer : IDisposable
     public AABB[] BVHLocalData => _bvhDataBuffer.LocalBuffer;
     public LeafNode[] BvhLeafNodeLocalData => _bvhLeafNodesBuffer.LocalBuffer;
     public InternalNode[] BvhInternalNodeLocalData => _bvhInternalNodesBuffer.LocalBuffer;
-    public int TrianglesLength => _trianglesLength;
+    public uint TrianglesLength => _trianglesLength;
 
     private static uint ExpandBits(uint v)
     {
@@ -51,14 +52,14 @@ public class MeshBufferContainer : IDisposable
     private static void GetCentroidAndAABB(Vector3 a, Vector3 b, Vector3 c, out Vector3 centroid, out AABB aabb)
     {
         Vector3 min = new Vector3(
-            Math.Min(Math.Min(a.x, b.x), c.x),
-            Math.Min(Math.Min(a.y, b.y), c.y),
-            Math.Min(Math.Min(a.z, b.z), c.z)
+            Math.Min(Math.Min(a.x, b.x), c.x) - 0.001f,
+            Math.Min(Math.Min(a.y, b.y), c.y) - 0.001f,
+            Math.Min(Math.Min(a.z, b.z), c.z) - 0.001f
         );
         Vector3 max = new Vector3(
-            Math.Max(Math.Max(a.x, b.x), c.x),
-            Math.Max(Math.Max(a.y, b.y), c.y),
-            Math.Max(Math.Max(a.z, b.z), c.z)
+            Math.Max(Math.Max(a.x, b.x), c.x) + 0.001f,
+            Math.Max(Math.Max(a.y, b.y), c.y) + 0.001f,
+            Math.Max(Math.Max(a.z, b.z), c.z) + 0.001f
         );
 
         centroid = (min + max) * 0.5f;
@@ -81,7 +82,7 @@ public class MeshBufferContainer : IDisposable
         return ret;
     }
 
-    private readonly int _trianglesLength;
+    private readonly uint _trianglesLength;
 
     private readonly DataBuffer<uint> _keysBuffer;
     private readonly DataBuffer<uint> _triangleIndexBuffer;
@@ -117,7 +118,7 @@ public class MeshBufferContainer : IDisposable
         int[] triangles = mesh.triangles;
         Vector2[] uvs = mesh.uv;
         Vector3[] normals = mesh.normals;
-        _trianglesLength = triangles.Length / 3;
+        _trianglesLength = (uint)triangles.Length / 3;
 
         for (uint i = 0; i < _trianglesLength; i++)
         {
@@ -150,6 +151,12 @@ public class MeshBufferContainer : IDisposable
         _triangleAABBBuffer.Sync();
     }
 
+    public void GetKeys()
+    {
+        _keysBuffer.GetData();
+
+    }
+
     public void GetAllGpuData()
     {
         _keysBuffer.GetData();
@@ -168,18 +175,18 @@ public class MeshBufferContainer : IDisposable
             }
         }
 
-        for (uint i = 0; i < _trianglesLength-1; i++)
+        for (uint i = 0; i < _trianglesLength - 1; i++)
         {
             if (_bvhInternalNodesBuffer[i].index == 0xFFFFFFFF && _bvhInternalNodesBuffer[i].parent == 0xFFFFFFFF)
             {
                 Debug.LogErrorFormat("INTERNAL CORRUPTED {0}", i);
-
             }
         }
     }
 
     public void PrintData()
     {
+        Debug.Log(_keysBuffer);
         Debug.Log(_bvhInternalNodesBuffer);
         Debug.Log(_bvhLeafNodesBuffer);
         Debug.Log(_bvhDataBuffer);

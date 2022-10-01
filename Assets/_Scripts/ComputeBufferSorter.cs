@@ -39,9 +39,9 @@ public class ComputeBufferSorter<TKey, TValue> : IDisposable where TKey: struct,
     // private readonly uint[] _sizesPrefixSumLocalData = new uint[Constants.BLOCK_SIZE / (Constants.THREADS_PER_BLOCK / Constants.BUCKET_SIZE)];
 
     private readonly Dictionary<uint, int> _debugDataDictionary = new(256);
-    private readonly int _dataLength;
+    private readonly uint _dataLength;
 
-    public ComputeBufferSorter(int dataLength, ComputeBuffer keys, ComputeBuffer values, IShaderContainer shaderContainer)
+    public ComputeBufferSorter(uint dataLength, ComputeBuffer keys, ComputeBuffer values, IShaderContainer shaderContainer)
     {
         _keys = keys;
         _values = values;
