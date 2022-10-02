@@ -151,10 +151,21 @@ public class MeshBufferContainer : IDisposable
         _triangleAABBBuffer.Sync();
     }
 
-    public void GetKeys()
+    public void DistributeKeys()
     {
         _keysBuffer.GetData();
-
+        
+        uint newCurrentValue = 0;
+        uint oldCurrentValue = _keysBuffer.LocalBuffer[0];
+        _keysBuffer.LocalBuffer[0] = newCurrentValue;
+        for (uint i = 1; i < _trianglesLength; i++)
+        {
+            newCurrentValue += Math.Max(_keysBuffer.LocalBuffer[i] - oldCurrentValue, 1);
+            oldCurrentValue = _keysBuffer.LocalBuffer[i];
+            _keysBuffer.LocalBuffer[i] = newCurrentValue;
+        }
+        
+        _keysBuffer.Sync();
     }
 
     public void GetAllGpuData()

@@ -361,7 +361,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _indexToCheck: 0
   _imageComposer: {fileID: 4800000, guid: 76cfc730dfa640c4ebed28afb85badb8, type: 3}
-  _mesh: {fileID: 4068373912626513877, guid: 72142b7b186115746bcf294a1d75f9d2, type: 3}
+  _mesh: {fileID: 7629811779324647873, guid: 6d7f8cafa3f2ae64a8c4a80d14c71f7e, type: 3}
   _shaderContainer: {fileID: 2000843035}
   _meshTexture: {fileID: 2800000, guid: b80fd47413dfb4945b9abc5905c53fbc, type: 3}
 --- !u!1 &1230734815

@@ -36,21 +36,10 @@ public class RaytracingMeshDrawer : MonoBehaviour
         _sorter = new ComputeBufferSorter<uint, uint>(_container.TrianglesLength, _container.Keys, _container.TriangleIndex, _shaderContainer);
         _sorter.Sort();
         
-        _container.GetKeys();
-        
-        var newKeysBuffer = new DataBuffer<uint>(Constants.DATA_ARRAY_COUNT, uint.MaxValue);
-        uint currentValue = 0;
-        newKeysBuffer[0] = currentValue;
-        for (uint i = 1; i < _container.TrianglesLength; i++)
-        {
-            currentValue += Math.Max(_container.KeysData[i] - _container.KeysData[i - 1], 1);
-            newKeysBuffer[i] = currentValue;
-        }
+        _container.DistributeKeys();
 
-        newKeysBuffer.Sync();
         _bvhConstructor = new BVHConstructor(_container.TrianglesLength,
-            newKeysBuffer.DeviceBuffer,
-            // _container.Keys,
+            _container.Keys,
             _container.TriangleIndex,
             _container.TriangleAABB,
             _container.BvhInternalNode,
@@ -82,8 +71,6 @@ public class RaytracingMeshDrawer : MonoBehaviour
 
         _imageComposerMaterial = new Material(_imageComposer);
         _imageComposerMaterial.SetTexture(ObjectTexture, _renderTexture);
-
-        newKeysBuffer.Dispose();
     }
 
     private void Update()
